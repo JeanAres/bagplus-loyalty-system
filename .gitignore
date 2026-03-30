@@ -6,28 +6,26 @@ __pycache__/
 .Python
 venv/
 env/
-ENV/
+*.egg-info/
+dist/
+build/
 
-# Banco de dados
+# Database
 *.db
 *.sqlite
 *.sqlite3
 
-# Variáveis de ambiente
+# Environment
 .env
+.env.local
 
-# IDEs
+# IDE
 .vscode/
 .idea/
 *.swp
 *.swo
+*~
 
-# Sistema
+# OS
 .DS_Store
 Thumbs.db
-
-# Logs
-*.log
-
-# QR Codes gerados
-qrcodes/
