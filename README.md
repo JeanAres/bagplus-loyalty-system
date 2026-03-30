@@ -1,116 +1,255 @@
-# Bag+
+# Bag+ - Sistema de Fidelização Sustentável
 
-> *Sua sacola vale mais.*
+> ⚠️ **AVISO IMPORTANTE:** Este é um projeto comercial. O código está disponível 
+> para avaliação e portfólio, mas **uso comercial requer licença**. 
+> Entre em contato para implementação: jean06soares@gmail.com
 
-Sistema de fidelização sustentável com EcoBags de juta rastreáveis, incentivando a redução de sacolas plásticas através de recompensas por uso recorrente.
+Sistema completo de gerenciamento de sacolas reutilizáveis com programa de recompensas.
 
-## Sobre o Projeto
+> Para entender o conceito e proposta do negócio, veja [PROPOSTA.md](PROPOSTA.md)
 
-O **Bag+** é um programa que visa substituir gradualmente as sacolas plásticas convencionais por EcoBags sustentáveis produzidas em juta - um material de origem vegetal, resistente e biodegradável.
+## Início Rápido
 
-O sistema incorpora um programa de fidelização que recompensa clientes pelo uso recorrente das sacolas, criando incentivos financeiros para práticas sustentáveis.
+### Pré-requisitos
 
-## Características Principais
+- Python 3.8+
+- Node.js (opcional, se usar npm)
+- Navegador moderno
 
-- **Material Sustentável**: EcoBags produzidas em juta biodegradável
-- **Sistema de Rastreamento**: Cada sacola vinculada ao CPF do cliente
-- **Programa de Recompensas**: Descontos progressivos baseados no número de utilizações
-- **Ciclo de Vida Controlado**: 40 utilizações ou 90 dias de prazo máximo
-- **Descarte Responsável**: Compostagem industrial das sacolas devolvidas
+### Instalação
+```bash
+# 1. Clonar repositório
+git clone https://github.com/SEU-USUARIO/bagplus-loyalty-system.git
+cd bagplus-loyalty-system
 
-## Como Funciona
+# 2. Criar ambiente virtual Python
+cd backend
+python -m venv venv
 
-### 1. Primeira Utilização
-- Cliente adquire a **Bag+** no caixa
-- Sacola é vinculada ao CPF do cliente
-- Contador de utilizações iniciado (máximo de 40 usos)
-- Prazo de 90 dias começa a contar
+# 3. Ativar ambiente virtual
+# Windows:
+.\venv\Scripts\Activate.ps1
+# Linux/Mac:
+source venv/bin/activate
 
-### 2. Uso Recorrente
-- Cliente retorna com sua(s) **Bag+**
-- Cada sacola utilizada recebe +1 registro de uso
-- Sem limite de sacolas por compra
-- Sistema valida apenas usos vinculados a compras reais
+# 4. Instalar dependências
+pip install -r requirements.txt
 
-### 3. Acúmulo de Benefícios
-- Ao atingir número "X" de utilizações (definido pelo estabelecimento)
-- Descontos liberados automaticamente
-- Devolução antecipada = descontos maiores
+# 5. Popular banco com dados de teste
+python ../scripts/seed_data.py
 
-### 4. Devolução
-- Cliente devolve a sacola ao final do ciclo
-- Recebe desconto proporcional ao momento da devolução
-- Mercado realiza descarte adequado via compostagem
+# 6. Iniciar servidor
+python main.py
+```
 
-## Ciclo de Vida da Bag+
+O servidor estará rodando em `http://localhost:8000`
 
-| Utilizações | Status |
-|-------------|--------|
-| 0 - 15 | Estado novo |
-| 16 - 25 | Período recomendado para troca |
-| 26 - 40 | Estágio final para substituição |
+### Acessar Sistema
 
-**Limites:**
-- Prazo máximo: **90 dias**
-- Utilizações máximas: **40 usos**
+- **Interface do Caixa**: Abra `frontend-caixa/index.html` no navegador
+- **Documentação API**: `http://localhost:8000/docs`
 
-## Regras e Controle
+---
 
-### Segurança do Sistema
-- Intervalo mínimo de 4 horas entre utilizações da mesma sacola
-- Validação obrigatória de compra real no sistema
-- Detecção de padrões anormais de uso
-- Alertas automáticos para comportamentos suspeitos
+## Estrutura do Projeto
+```
+bagplus-loyalty-system/
+├── backend/              # API FastAPI
+│   ├── main.py          # Servidor principal
+│   ├── models.py        # Modelos do banco de dados
+│   ├── database.py      # Configuração do banco
+│   ├── requirements.txt # Dependências Python
+│   └── .env             # Variáveis de ambiente
+├── frontend-caixa/      # Interface web do caixa
+│   ├── index.html       # Página principal
+│   ├── style.css        # Estilos
+│   └── app.js           # Lógica do frontend
+├── scripts/             # Scripts utilitários
+│   └── seed_data.py     # Popular banco com dados teste
+├── tests/               # Testes automatizados
+│   └── test_db.py       # Testes do banco
+├── docs/                # Documentação adicional
+├── database/            # Banco de dados (gerado automaticamente)
+├── app-cliente/         # App do cliente (futuro)
+├── README.md            # Este arquivo
+├── PROPOSTA.md          # Proposta de negócio
+└── CONTRIBUTING.md      # Guia de contribuição
+```
 
-### Integridade
-- Uso pessoal e intransferível (vinculado ao CPF)
-- Uso por terceiros não gera benefícios
-- Compartilhamento ou manipulação resulta em suspensão temporária
-- Ultrapassar limites = perda do direito à devolução com desconto
+---
 
-### Responsabilidade Ambiental
-- Descarte incorreto comprovado pode resultar em suspensão de benefícios
-- Mercado responsável pela destinação adequada das sacolas devolvidas
-- Compostagem industrial ou destinação a resíduos orgânicos
+## Tecnologias
 
-## Público-Alvo Inicial
+### Backend
+- **FastAPI** - Framework web Python moderno e rápido
+- **SQLAlchemy** - ORM para banco de dados
+- **SQLite** - Banco de dados (desenvolvimento)
+- **Uvicorn** - Servidor ASGI
 
-- **Fase 1**: Redes de supermercados (ex: Zaffari)
-- **Fase 2**: Expansão para farmácias, lojas e demais estabelecimentos do varejo
+### Frontend
+- **HTML/CSS/JavaScript** - Interface web pura
+- **Fetch API** - Comunicação com backend
 
-## Impacto Ambiental
+### Futuro
+- **PostgreSQL** - Banco para produção
+- **React Native/Flutter** - App mobile do cliente
 
-- Redução do uso de sacolas plásticas convencionais
-- Material 100% biodegradável
-- Descarte responsável via compostagem industrial
-- Incentivo à mudança de comportamento do consumidor
+---
 
-## Estratégia de Implementação
+## API Endpoints
 
-1. **Fase Inicial**: Sacolas plásticas ainda disponíveis
-2. **Transição**: Substituição gradual
-3. **Consolidação**: Bag+ como opção principal
-4. **Futuro**: Bag+ como única opção oferecida
+### Clientes
 
-## Benefícios
+**Criar Cliente**
+```http
+POST /api/clientes
+Query: cpf, nome
+```
 
-### Para o Cliente
-- Descontos em compras futuras
-- Contribuição para sustentabilidade
-- Sacolas resistentes e duráveis
-- Recompensas por devolução antecipada
+**Listar Sacolas do Cliente**
+```http
+GET /api/clientes/{cpf}/sacolas
+```
 
-### Para o Estabelecimento
-- Imagem sustentável fortalecida
-- Redução de custos com sacolas plásticas
-- Fidelização de clientes
-- Diferencial competitivo
+### Sacolas
 
-### Para o Meio Ambiente
-- Redução de plástico descartável
-- Material biodegradável
-- Descarte responsável
-- Economia circular
+**Buscar Sacola**
+```http
+GET /api/sacolas/{sacola_id}
+```
 
+**Criar Lote de Sacolas**
+```http
+POST /api/sacolas/criar-lote
+Query: cpf_cliente, quantidade
+```
 
-**Bag+** - Sua sacola vale mais.
+**Registrar Uso**
+```http
+POST /api/sacolas/registrar-uso
+Query: sacola_id
+```
+
+**Devolver Sacola**
+```http
+POST /api/sacolas/devolver
+Query: sacola_id
+```
+
+> Documentação completa: `http://localhost:8000/docs` (Swagger)
+
+---
+
+## Banco de Dados
+
+### Tabelas
+
+- **clientes** - Dados dos clientes cadastrados
+- **sacolas** - Sacolas individuais rastreáveis
+- **registros_uso** - Histórico de utilizações
+- **devolucoes** - Histórico de devoluções
+
+> Ver detalhes em [database/README.md](database/README.md)
+
+---
+
+## Testando o Sistema
+
+### 1. Popular com Dados de Teste
+```bash
+python scripts/seed_data.py
+```
+
+Isso cria:
+- 5 clientes fictícios
+- 15 sacolas em estados variados (novas, médias, antigas)
+
+### 2. Testar no Sistema de Caixa
+
+1. Abra `frontend-caixa/index.html`
+2. Teste busca por código: `BAG-00001`
+3. Teste busca por CPF: `123.456.789-00`
+4. Registre usos
+5. Processe devoluções
+
+### 3. Testar API Diretamente
+
+Acesse `http://localhost:8000/docs` e teste os endpoints interativamente.
+
+---
+
+## Configuração
+
+### Variáveis de Ambiente (.env)
+```env
+DATABASE_URL=sqlite:///./bagplus.db
+ENVIRONMENT=development
+API_HOST=0.0.0.0
+API_PORT=8000
+```
+
+---
+
+## Deploy
+
+### Desenvolvimento (Local)
+Já está configurado! Basta seguir o "Início Rápido".
+
+### Produção (Futuro)
+
+1. **Migrar para PostgreSQL**
+   - Alterar `DATABASE_URL` no `.env`
+   
+2. **Deploy Backend**
+   - Railway, Heroku, AWS, ou servidor próprio
+   
+3. **Deploy Frontend**
+   - Netlify, Vercel, ou servir via backend
+
+4. **Adicionar Autenticação**
+   - Sistema de login para operadores
+   - JWT tokens
+
+> Ver roadmap completo em [docs/README.md](docs/README.md)
+
+---
+
+## Troubleshooting
+
+### Erro: "Module not found"
+```bash
+pip install -r backend/requirements.txt
+```
+
+### Erro: "Address already in use"
+Porta 8000 já está em uso. Mate o processo:
+```bash
+# Windows
+netstat -ano | findstr :8000
+taskkill /PID <PID> /F
+
+# Linux/Mac
+lsof -ti:8000 | xargs kill -9
+```
+
+### Banco não aparece
+O banco é criado automaticamente ao iniciar o servidor pela primeira vez.
+
+---
+
+## Contribuindo
+
+Leia [CONTRIBUTING.md](CONTRIBUTING.md) para:
+- Convenções de commits
+- Padrões de código
+- Processo de Pull Request
+
+---
+
+##Contato
+
+jean06soares@gmail.com
+
+---
+
+**Bag+** - Sua sacola vale mais. 🌱

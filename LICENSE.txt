@@ -1,0 +1,91 @@
+# Licença de Software Proprietário - Bag+ Sistema de Fidelização
+
+Copyright © 2026 Jean Soares
+
+## Propriedade Intelectual
+
+Este software e toda a documentação associada ("Bag+ Sistema de Fidelização") 
+são propriedade exclusiva de Jean Soares.
+
+## Restrições de Uso
+
+O uso deste software é estritamente limitado. SEM AUTORIZAÇÃO PRÉVIA POR ESCRITO, 
+É EXPRESSAMENTE PROIBIDO:
+
+ Uso comercial ou em ambiente de produção
+ Distribuição do código-fonte ou binários
+ Modificação para uso comercial
+ Venda, aluguel ou sublicenciamento
+ Implementação em estabelecimentos comerciais
+ Uso para gerar receita direta ou indireta
+
+## Uso Permitido
+
+Apenas os seguintes usos são permitidos sem licença comercial:
+
+ Visualização do código para fins educacionais
+ Avaliação técnica em processos seletivos
+ Análise de portfólio profissional
+ Demonstrações técnicas não comerciais
+
+## Licenciamento Comercial
+
+Este software está disponível para licenciamento comercial para 
+implementação em:
+- Supermercados e hipermercados
+- Farmácias
+- Lojas de varejo
+- Outros estabelecimentos comerciais
+
+### Para Licenciamento Comercial, Entre em Contato:
+
+ **Email:** jean06soares@gmail.com
+
+O licenciamento comercial inclui:
+- Direito de uso em ambiente de produção
+- Suporte técnico
+- Atualizações de segurança
+- Documentação completa
+- Treinamento de operadores (opcional)
+
+## Direitos Autorais
+
+Todos os direitos autorais, marcas registradas e outros direitos de 
+propriedade intelectual relacionados ao software pertencem exclusivamente 
+a Jean Soares.
+
+## Garantias e Responsabilidades
+
+ESTE SOFTWARE É FORNECIDO "COMO ESTÁ", SEM GARANTIAS DE QUALQUER TIPO, 
+EXPRESSAS OU IMPLÍCITAS, INCLUINDO, MAS NÃO SE LIMITANDO A, GARANTIAS 
+DE COMERCIALIZAÇÃO, ADEQUAÇÃO A UM PROPÓSITO ESPECÍFICO E NÃO VIOLAÇÃO.
+
+EM NENHUMA CIRCUNSTÂNCIA O AUTOR SERÁ RESPONSÁVEL POR QUAISQUER DANOS 
+DIRETOS, INDIRETOS, INCIDENTAIS, ESPECIAIS, EXEMPLARES OU CONSEQUENCIAIS 
+DECORRENTES DO USO OU INCAPACIDADE DE USO DESTE SOFTWARE.
+
+## Violação de Licença
+
+O uso não autorizado, cópia, modificação ou distribuição deste software 
+constitui violação desta licença e pode resultar em:
+- Ação legal civil
+- Reivindicação de danos
+- Medidas cautelares
+
+## Jurisdição
+
+Esta licença é regida pelas leis da República Federativa do Brasil.
+
+## Modificações da Licença
+
+Jean Soares reserva-se o direito de modificar os termos desta licença 
+a qualquer momento. Usuários serão notificados de mudanças significativas.
+
+---
+
+**TODOS OS DIREITOS RESERVADOS.**
+
+Para dúvidas sobre esta licença ou para solicitar permissões especiais, 
+entre em contato: jean06soares@gmail.com
+
+Última atualização: Março de 2026
