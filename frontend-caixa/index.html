@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bag+ - Sistema Caixa</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🛍️ Bag+ </h1>
+            <p class="subtitle">Sistema de Gerenciamento de Sacolas</p>
+        </header>
+
+        <main>
+            <!-- Botão de cadastro rápido -->
+            <div class="cadastro-rapido">
+                <button onclick="abrirCadastroCliente()" class="btn-cadastro">
+                    ➕ Cadastrar Novo Cliente
+                </button>
+            </div>
+
+            <!-- Seção de busca de sacola -->
+            <section class="search-section">
+                <h2>Buscar Sacola</h2>
+                
+                <!-- Tabs -->
+                <div class="tabs">
+                    <button class="tab-btn active" onclick="mudarTab('codigo')">
+                        🏷️ Por Código
+                    </button>
+                    <button class="tab-btn" onclick="mudarTab('cpf')">
+                        👤 Por CPF
+                    </button>
+                </div>
+
+                <!-- Busca por código -->
+                <div id="buscaCodigo" class="tab-content active">
+                    <div class="input-group">
+                        <input 
+                            type="text" 
+                            id="sacolaInput" 
+                            placeholder="Digite o código (ex: BAG-00001)"
+                            autofocus
+                        >
+                        <button onclick="buscarSacola()" class="btn-primary">Buscar</button>
+                    </div>
+                    <p class="hint">💡 Escaneie o QR Code ou digite manualmente</p>
+                </div>
+
+                <!-- Busca por CPF -->
+                <div id="buscaCpf" class="tab-content">
+                    <div class="input-group">
+                        <input 
+                            type="text" 
+                            id="cpfInput" 
+                            placeholder="Digite o CPF (ex: 123.456.789-00)"
+                            maxlength="14"
+                        >
+                        <button onclick="buscarPorCpf()" class="btn-primary">Buscar</button>
+                    </div>
+                    <p class="hint">💡 Use quando o código estiver ilegível</p>
+                </div>
+            </section>
+
+            <!-- Lista de sacolas (quando buscar por CPF) -->
+            <section id="listaSacolas" class="lista-sacolas hidden">
+                <h2>Selecione a Sacola</h2>
+                <p class="cliente-info">
+                    <strong>Cliente:</strong> <span id="clienteNomeLista"></span> 
+                    (<span id="clienteCpfLista"></span>)
+                </p>
+                <div id="sacolasContainer"></div>
+            </section>
+
+            <!-- Mensagem de erro -->
+            <div id="errorMessage" class="error-message hidden"></div>
+
+            <!-- Informações da sacola -->
+            <section id="sacolaInfo" class="sacola-info hidden">
+                <h2>Informações da Sacola</h2>
+                
+                <div class="info-card">
+                    <div class="info-header">
+                        <h3>Cliente</h3>
+                    </div>
+                    <div class="info-content">
+                        <p><strong>Nome:</strong> <span id="clienteNome"></span></p>
+                        <p><strong>CPF:</strong> <span id="clienteCpf"></span></p>
+                    </div>
+                </div>
+
+                <div class="info-card">
+                    <div class="info-header">
+                        <h3>Sacola</h3>
+                    </div>
+                    <div class="info-content">
+                        <p><strong>ID:</strong> <span id="sacolaId"></span></p>
+                        <p><strong>Status:</strong> <span id="sacolaStatus" class="status-badge"></span></p>
+                    </div>
+                </div>
+
+                <div class="info-card">
+                    <div class="info-header">
+                        <h3>Estatísticas de Uso</h3>
+                    </div>
+                    <div class="info-content">
+                        <div class="stat-item">
+                            <span class="stat-label">Utilizações:</span>
+                            <span class="stat-value" id="utilizacoes"></span>
+                        </div>
+                        <div class="progress-bar">
+                            <div id="progressBar" class="progress-fill"></div>
+                        </div>
+                        
+                        <div class="stat-item">
+                            <span class="stat-label">Dias de uso:</span>
+                            <span class="stat-value" id="diasUso"></span>
+                        </div>
+                        <div class="progress-bar">
+                            <div id="progressBarDias" class="progress-fill"></div>
+                        </div>
+
+                        <p class="ultima-utilizacao">
+                            <strong>Última utilização:</strong> 
+                            <span id="ultimaUtilizacao"></span>
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Card de Desconto por Fidelidade -->
+                <div class="info-card fidelidade-card">
+                    <div class="info-header">
+                        <h3>🎁 Desconto por Fidelidade</h3>
+                    </div>
+                    <div class="info-content">
+                        <div class="desconto-fidelidade-atual">
+                            <p class="desconto-label">Desconto disponível:</p>
+                            <p class="desconto-valor-grande" id="descontoFidelidadeAtual">R$ 0,00</p>
+                        </div>
+                        
+                        <div class="progresso-proximo-marco" id="progressoMarco">
+                            <!-- Preenchido pelo JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card de Desconto por Devolução -->
+                <div class="info-card devolucao-card">
+                    <div class="info-header">
+                        <h3>🔄 Desconto na Devolução</h3>
+                    </div>
+                    <div class="info-content">
+                        <div class="desconto-devolucao-atual">
+                            <p class="desconto-label">Valor ao devolver:</p>
+                            <p class="desconto-valor-grande" id="descontoDevolucaoAtual">R$ 0,00</p>
+                        </div>
+                        
+                        <div class="desconto-incentivo" id="incentivoDevolucao">
+                            <!-- Preenchido pelo JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="actions">
+                    <button onclick="registrarUso()" class="btn-success" id="btnRegistrar">
+                        ✅ Registrar Uso
+                    </button>
+                    <button onclick="mostrarModalDevolucao()" class="btn-warning" id="btnDevolver">
+                        🔄 Devolver Sacola
+                    </button>
+                    <button onclick="limparTela()" class="btn-secondary">
+                        🔄 Nova Busca
+                    </button>
+                </div>
+            </section>
+
+            <!-- Mensagem de sucesso -->
+            <div id="successMessage" class="success-message hidden"></div>
+        </main>
+
+        <!-- Modal de cadastro de cliente -->
+        <div id="modalCadastro" class="modal hidden">
+            <div class="modal-content">
+                <h2>➕ Cadastrar Novo Cliente</h2>
+                
+                <!-- Mensagem de erro no modal -->
+                <div id="errorCadastro" class="error-message hidden"></div>
+                
+                <form id="formCadastro" onsubmit="cadastrarCliente(event)">
+                    <div class="form-group">
+                        <label for="cadastroCpf">CPF *</label>
+                        <input 
+                            type="text" 
+                            id="cadastroCpf" 
+                            placeholder="000.000.000-00"
+                            maxlength="14"
+                            required
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="cadastroNome">Nome Completo *</label>
+                        <input 
+                            type="text" 
+                            id="cadastroNome" 
+                            placeholder="Nome completo"
+                            required
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="cadastroQtdSacolas">Quantidade de Sacolas</label>
+                        <div class="input-number">
+                            <button type="button" onclick="mudarQtdSacolas(-1)">-</button>
+                            <input 
+                                type="number" 
+                                id="cadastroQtdSacolas" 
+                                value="1"
+                                min="1"
+                                max="20"
+                                readonly
+                            >
+                            <button type="button" onclick="mudarQtdSacolas(1)">+</button>
+                        </div>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button type="submit" class="btn-success">
+                            ✅ Cadastrar
+                        </button>
+                        <button type="button" onclick="fecharCadastro()" class="btn-secondary">
+                            ❌ Cancelar
+                        </button>
+                    </div>
+                </form>
+
+                <div id="loadingCadastro" class="loading hidden">
+                    <p>⏳ Cadastrando...</p>
+                </div>
+
+                <div id="successCadastro" class="success-cadastro hidden">
+                    <h3>✅ Cliente cadastrado!</h3>
+                    <div class="sacolas-criadas">
+                        <p><strong>Sacolas criadas:</strong></p>
+                        <div id="sacolasCriadasLista"></div>
+                    </div>
+                    <button onclick="fecharCadastro()" class="btn-primary">
+                        OK
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de devolução -->
+        <div id="modalDevolucao" class="modal hidden">
+            <div class="modal-content">
+                <h2>🔄 Devolver Sacola</h2>
+                
+                <div class="modal-info">
+                    <p><strong>Sacola:</strong> <span id="modalSacolaId"></span></p>
+                    <p><strong>Utilizações:</strong> <span id="modalUtilizacoes"></span></p>
+                    <p><strong>Dias de uso:</strong> <span id="modalDias"></span></p>
+                </div>
+
+                <div class="desconto-preview">
+                    <p class="desconto-label">Desconto a conceder:</p>
+                    <p class="desconto-valor" id="descontoValor">R$ 0,00</p>
+                </div>
+
+                <p class="modal-warning">⚠️ Esta ação não pode ser desfeita</p>
+
+                <div class="modal-actions">
+                    <button onclick="confirmarDevolucao()" class="btn-success">
+                        ✅ Confirmar
+                    </button>
+                    <button onclick="fecharModal()" class="btn-secondary">
+                        ❌ Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>Bag+ © 2026</p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
