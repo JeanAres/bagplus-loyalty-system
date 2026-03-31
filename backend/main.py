@@ -247,7 +247,6 @@ def buscar_sacola(sacola_id: str, db: Session = Depends(get_db)):
     # Calcular desconto de devolução (baseado em estado)
     utilizacoes = sacola.utilizacoes
     
-    # AJUSTADO: 0-15 usos (conforme documento)
     if utilizacoes >= 0 and utilizacoes <= 15 and dias_uso <= 60:
         desconto_devolucao = 40.00
         estado = "verde"
@@ -293,6 +292,22 @@ def registrar_uso(sacola_id: str, db: Session = Depends(get_db)):
     if sacola.utilizacoes >= 40:
         raise HTTPException(status_code=400, detail="Sacola atingiu limite de 40 utilizações")
     
+    # Validar intervalo de 4 horas entre usos
+    if sacola.ultima_utilizacao:
+        tempo_desde_ultimo_uso = datetime.now() - sacola.ultima_utilizacao
+        horas_desde_ultimo_uso = tempo_desde_ultimo_uso.total_seconds() / 3600
+        
+        if horas_desde_ultimo_uso < 4:
+            horas_restantes = 4 - horas_desde_ultimo_uso
+            minutos_restantes = int(horas_restantes * 60)
+            
+            if horas_restantes >= 1:
+                mensagem = f"Aguarde {horas_restantes:.1f} horas para usar esta sacola novamente"
+            else:
+                mensagem = f"Aguarde {minutos_restantes} minutos para usar esta sacola novamente"
+            
+            raise HTTPException(status_code=400, detail=mensagem)
+    
     # Atualizar sacola
     sacola.utilizacoes += 1
     sacola.ultima_utilizacao = datetime.now()
@@ -333,7 +348,7 @@ def devolver_sacola(sacola_id: str, db: Session = Depends(get_db)):
         
     utilizacoes = sacola.utilizacoes
     
-    # Calcular desconto baseado no estado da sacola (AJUSTADO: 0-15 usos)
+    # Calcular desconto baseado no estado da sacola
     if utilizacoes >= 0 and utilizacoes <= 15 and dias_uso <= 60:
         desconto = 40.00  # Verde
     elif utilizacoes >= 16 and utilizacoes <= 25 and dias_uso <= 80:
