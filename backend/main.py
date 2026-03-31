@@ -279,8 +279,12 @@ def buscar_sacola(sacola_id: str, db: Session = Depends(get_db)):
     }
 
 @app.post("/api/sacolas/registrar-uso")
-def registrar_uso(sacola_id: str, db: Session = Depends(get_db)):
-    """Registra o uso de uma sacola"""
+def registrar_uso(
+    sacola_id: str, 
+    valor_compra: str,
+    db: Session = Depends(get_db)
+):
+    """Registra o uso de uma sacola com valor da compra"""
     
     sacola = db.query(models.Sacola).filter(models.Sacola.id == sacola_id).first()
     if not sacola:
@@ -308,12 +312,32 @@ def registrar_uso(sacola_id: str, db: Session = Depends(get_db)):
             
             raise HTTPException(status_code=400, detail=mensagem)
     
+    # Converter e validar valor da compra
+    try:
+        # Substituir vírgula por ponto
+        valor_str = valor_compra.replace(',', '.')
+        valor_float = float(valor_str)
+    except (ValueError, AttributeError):
+        raise HTTPException(
+            status_code=400,
+            detail="Valor da compra inválido. Use formato: 120.50 ou 120,50"
+        )
+    
+    if valor_float < 0:
+        raise HTTPException(
+            status_code=400, 
+            detail="Valor da compra não pode ser negativo"
+        )
+    
     # Atualizar sacola
     sacola.utilizacoes += 1
     sacola.ultima_utilizacao = datetime.now()
     
-    # Criar registro de uso
-    registro = models.RegistroUso(sacola_id=sacola_id)
+    # Criar registro de uso com valor da compra
+    registro = models.RegistroUso(
+        sacola_id=sacola_id,
+        valor_compra=valor_float
+    )
     db.add(registro)
     
     db.commit()
@@ -326,6 +350,9 @@ def registrar_uso(sacola_id: str, db: Session = Depends(get_db)):
             "id": sacola.id,
             "utilizacoes": sacola.utilizacoes,
             "ultima_utilizacao": sacola.ultima_utilizacao
+        },
+        "compra": {
+            "valor": valor_float
         }
     }
 
@@ -449,6 +476,86 @@ def ativar_sacola(qr_code: str, cpf_cliente: str, db: Session = Depends(get_db))
         "cliente": {
             "cpf": cliente.cpf,
             "nome": cliente.nome
+        }
+    }
+
+# ========== ENDPOINTS DE HISTÓRICO E ESTATÍSTICAS ==========
+
+@app.get("/api/sacolas/{sacola_id}/historico")
+def historico_uso(sacola_id: str, db: Session = Depends(get_db)):
+    """
+    Retorna histórico completo de usos de uma sacola com valores de compra
+    """
+    # Verificar se sacola existe
+    sacola = db.query(models.Sacola).filter(models.Sacola.id == sacola_id).first()
+    if not sacola:
+        raise HTTPException(status_code=404, detail="Sacola não encontrada")
+    
+    # Buscar registros de uso
+    registros = db.query(models.RegistroUso).filter(
+        models.RegistroUso.sacola_id == sacola_id
+    ).order_by(models.RegistroUso.data_uso.desc()).all()
+    
+    # Calcular estatísticas
+    total_gasto = sum(r.valor_compra for r in registros)
+    valor_medio = total_gasto / len(registros) if registros else 0
+    
+    return {
+        "sacola_id": sacola_id,
+        "total_usos": len(registros),
+        "total_gasto": round(total_gasto, 2),
+        "valor_medio": round(valor_medio, 2),
+        "historico": [
+            {
+                "id": r.id,
+                "data_uso": r.data_uso,
+                "valor_compra": r.valor_compra
+            }
+            for r in registros
+        ]
+    }
+
+@app.get("/api/clientes/{cpf}/estatisticas")
+def estatisticas_cliente(cpf: str, db: Session = Depends(get_db)):
+    """
+    Estatísticas de compras do cliente
+    """
+    # Verificar se cliente existe
+    cliente = db.query(models.Cliente).filter(models.Cliente.cpf == cpf).first()
+    if not cliente:
+        raise HTTPException(status_code=404, detail="Cliente não encontrado")
+    
+    # Buscar todas sacolas ativas do cliente
+    sacolas = db.query(models.Sacola).filter(
+        models.Sacola.cliente_cpf == cpf,
+        models.Sacola.status == models.StatusSacola.ativo
+    ).all()
+    
+    # Buscar registros de uso de todas as sacolas
+    total_gasto = 0
+    total_usos = 0
+    
+    for sacola in sacolas:
+        registros = db.query(models.RegistroUso).filter(
+            models.RegistroUso.sacola_id == sacola.id
+        ).all()
+        
+        total_usos += len(registros)
+        total_gasto += sum(r.valor_compra for r in registros)
+    
+    valor_medio = total_gasto / total_usos if total_usos > 0 else 0
+    
+    return {
+        "cliente": {
+            "cpf": cliente.cpf,
+            "nome": cliente.nome,
+            "data_cadastro": cliente.data_cadastro
+        },
+        "estatisticas": {
+            "sacolas_ativas": len(sacolas),
+            "total_usos": total_usos,
+            "total_gasto": round(total_gasto, 2),
+            "valor_medio_compra": round(valor_medio, 2)
         }
     }
 

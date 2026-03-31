@@ -72,6 +72,7 @@ class RegistroUso(Base):
     id = Column(Integer, primary_key=True, index=True)
     sacola_id = Column(String, ForeignKey("sacolas.id"))
     data_uso = Column(DateTime, default=datetime.now)
+    valor_compra = Column(Float, nullable=False)  #Valor da compra
     
     # Relacionamento
     sacola = relationship("Sacola", back_populates="registros")
