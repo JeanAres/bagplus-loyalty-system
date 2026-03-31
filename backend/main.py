@@ -4,9 +4,63 @@ from sqlalchemy.orm import Session
 from database import get_db, engine
 import models
 from datetime import datetime
+import os
+import hashlib
 
 # Criar tabelas
 models.Base.metadata.create_all(bind=engine)
+
+# ========== FUNÇÕES AUXILIARES ==========
+
+def validar_qrcode_checksum(qr_code: str):
+    """
+    Valida formato e checksum de um QR Code
+    
+    Retorna: (valido: bool, sacola_id: str, data_criacao: str, erro: str)
+    """
+    
+    # 1. VALIDAR FORMATO
+    partes = qr_code.split(':')
+    if len(partes) != 3:
+        return False, None, None, "Formato inválido. Esperado: BAG-00001:2026-03-31:abc123"
+    
+    sacola_id = partes[0]
+    data_criacao = partes[1]
+    checksum_recebido = partes[2]
+    
+    # 2. VALIDAR ID
+    if not sacola_id.startswith('BAG-'):
+        return False, None, None, "ID deve começar com BAG-"
+    
+    try:
+        numero = int(sacola_id.split('-')[1])
+        if numero < 1:
+            return False, None, None, "Número do ID inválido"
+    except:
+        return False, None, None, "Formato de ID inválido"
+    
+    # 3. VALIDAR DATA
+    try:
+        datetime.strptime(data_criacao, '%Y-%m-%d')
+    except:
+        return False, None, None, "Data inválida. Formato esperado: AAAA-MM-DD"
+    
+    # 4. VALIDAR CHECKSUM
+    SECRET_KEY = os.getenv('SECRET_KEY')
+    if not SECRET_KEY:
+        return False, None, None, "Erro de configuração do servidor"
+    
+    texto = f"{sacola_id}{data_criacao}{SECRET_KEY}"
+    hash_completo = hashlib.sha256(texto.encode()).hexdigest()
+    checksum_correto = hash_completo[:6]
+    
+    if checksum_recebido != checksum_correto:
+        return False, None, None, "QR Code inválido ou falsificado"
+    
+    # TUDO VÁLIDO
+    return True, sacola_id, data_criacao, None
+
+# ========== CONFIGURAÇÃO DO APP ==========
 
 app = FastAPI(title="Bag+ API", version="1.0")
 
@@ -59,7 +113,8 @@ def calcular_desconto_fidelidade(utilizacoes):
 def read_root():
     return {"message": "Bag+ API - Sistema de Fidelização Sustentável"}
 
-# Endpoint: Criar cliente
+# ========== ENDPOINTS DE CLIENTES ==========
+
 @app.post("/api/clientes")
 def criar_cliente(cpf: str, nome: str, db: Session = Depends(get_db)):
     """Cria um novo cliente no sistema"""
@@ -90,11 +145,36 @@ def criar_cliente(cpf: str, nome: str, db: Session = Depends(get_db)):
         "cliente": {
             "cpf": cliente.cpf,
             "nome": cliente.nome,
-            "data_adesao": cliente.data_adesao
+            "data_cadastro": cliente.data_cadastro
         }
     }
 
-# Endpoint: Listar sacolas de um cliente
+@app.get("/api/clientes")
+def listar_clientes(db: Session = Depends(get_db)):
+    """Lista todos os clientes cadastrados"""
+    
+    clientes = db.query(models.Cliente).all()
+    
+    clientes_data = []
+    for cliente in clientes:
+        # Contar sacolas ativas
+        sacolas_ativas = db.query(models.Sacola).filter(
+            models.Sacola.cliente_cpf == cliente.cpf,
+            models.Sacola.status == models.StatusSacola.ativo
+        ).count()
+        
+        clientes_data.append({
+            "cpf": cliente.cpf,
+            "nome": cliente.nome,
+            "data_cadastro": cliente.data_cadastro,
+            "sacolas_ativas": sacolas_ativas
+        })
+    
+    return {
+        "total": len(clientes_data),
+        "clientes": clientes_data
+    }
+
 @app.get("/api/clientes/{cpf}/sacolas")
 def listar_sacolas_cliente(cpf: str, db: Session = Depends(get_db)):
     """Lista todas as sacolas ativas de um cliente"""
@@ -104,18 +184,23 @@ def listar_sacolas_cliente(cpf: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Cliente não encontrado")
     
     sacolas = db.query(models.Sacola).filter(
-        models.Sacola.cpf_cliente == cpf,
-        models.Sacola.status == "ativo"
+        models.Sacola.cliente_cpf == cpf,
+        models.Sacola.status == models.StatusSacola.ativo
     ).all()
     
     sacolas_data = []
     for sacola in sacolas:
-        dias_uso = (datetime.now() - sacola.data_compra).days
+        if sacola.data_vinculacao:
+            dias_uso = (datetime.now() - sacola.data_vinculacao).days
+        else:
+            dias_uso = 0
+            
         sacolas_data.append({
             "id": sacola.id,
             "utilizacoes": sacola.utilizacoes,
             "dias_de_uso": dias_uso,
-            "status": sacola.status
+            "status": sacola.status.value,
+            "data_criacao": sacola.data_criacao
         })
     
     return {
@@ -127,7 +212,8 @@ def listar_sacolas_cliente(cpf: str, db: Session = Depends(get_db)):
         "sacolas": sacolas_data
     }
 
-# Endpoint: Buscar sacola por ID
+# ========== ENDPOINTS DE SACOLAS ==========
+
 @app.get("/api/sacolas/{sacola_id}")
 def buscar_sacola(sacola_id: str, db: Session = Depends(get_db)):
     """Busca informações de uma sacola pelo ID"""
@@ -136,32 +222,42 @@ def buscar_sacola(sacola_id: str, db: Session = Depends(get_db)):
     if not sacola:
         raise HTTPException(status_code=404, detail="Sacola não encontrada")
     
-    cliente = db.query(models.Cliente).filter(models.Cliente.cpf == sacola.cpf_cliente).first()
+    # Se sacola está em estoque (não vinculada), retornar info básica
+    if sacola.status == models.StatusSacola.estoque:
+        return {
+            "sacola": {
+                "id": sacola.id,
+                "status": "estoque",
+                "data_criacao": sacola.data_criacao,
+                "mensagem": "Sacola nunca foi vinculada a um cliente. Use /api/sacolas/ativar para vincular."
+            }
+        }
+    
+    cliente = db.query(models.Cliente).filter(models.Cliente.cpf == sacola.cliente_cpf).first()
     
     # Calcular dias de uso
-    dias_uso = (datetime.now() - sacola.data_compra).days
+    if sacola.data_vinculacao:
+        dias_uso = (datetime.now() - sacola.data_vinculacao).days
+    else:
+        dias_uso = 0
     
     # Calcular desconto de fidelidade
     fidelidade = calcular_desconto_fidelidade(sacola.utilizacoes)
     
-    # Calcular desconto de devolução (baseado em estado + mínimo de usos)
+    # Calcular desconto de devolução (baseado em estado)
     utilizacoes = sacola.utilizacoes
     
-    # Determinar desconto baseado no estado da sacola
-    if utilizacoes >= 10 and utilizacoes <= 15 and dias_uso <= 60:
-        # 🟢 Verde - Estado ótimo (MÍNIMO 10 usos)
+    # AJUSTADO: 0-15 usos (conforme documento)
+    if utilizacoes >= 0 and utilizacoes <= 15 and dias_uso <= 60:
         desconto_devolucao = 40.00
         estado = "verde"
     elif utilizacoes >= 16 and utilizacoes <= 25 and dias_uso <= 80:
-        # 🟡 Amarelo - Estado médio (MÍNIMO 16 usos)
         desconto_devolucao = 20.00
         estado = "amarelo"
     elif utilizacoes >= 26 and utilizacoes <= 40 and dias_uso <= 90:
-        # 🔴 Vermelho - Fim de vida (MÍNIMO 26 usos)
         desconto_devolucao = 10.00
         estado = "vermelho"
     else:
-        # ⚫ Sem desconto (menos de 10 usos OU passou limites)
         desconto_devolucao = 0.00
         estado = "sem_desconto"
     
@@ -170,98 +266,19 @@ def buscar_sacola(sacola_id: str, db: Session = Depends(get_db)):
             "id": sacola.id,
             "utilizacoes": sacola.utilizacoes,
             "dias_de_uso": dias_uso,
-            "status": sacola.status,
-            "ultima_utilizacao": sacola.ultima_utilizacao
+            "status": sacola.status.value,
+            "ultima_utilizacao": sacola.ultima_utilizacao,
+            "data_criacao": sacola.data_criacao
         },
         "cliente": {
-            "nome": cliente.nome,
-            "cpf": cliente.cpf
+            "nome": cliente.nome if cliente else None,
+            "cpf": cliente.cpf if cliente else None
         },
         "fidelidade": fidelidade,
         "desconto_devolucao": desconto_devolucao,
         "estado": estado
     }
 
-# Endpoint: Criar sacola
-@app.post("/api/sacolas")
-def criar_sacola(cpf_cliente: str, db: Session = Depends(get_db)):
-    """Cria uma nova sacola para um cliente"""
-    
-    # Verificar se cliente existe
-    cliente = db.query(models.Cliente).filter(models.Cliente.cpf == cpf_cliente).first()
-    if not cliente:
-        raise HTTPException(status_code=404, detail="Cliente não encontrado")
-    
-    # Buscar último ID de sacola no banco
-    ultima_sacola = db.query(models.Sacola).order_by(models.Sacola.id.desc()).first()
-    
-    if ultima_sacola:
-        # Extrair número do último ID (BAG-00123 -> 123)
-        ultimo_numero = int(ultima_sacola.id.split('-')[1])
-        novo_numero = ultimo_numero + 1
-    else:
-        novo_numero = 1
-    
-    # Gerar ID no formato BAG-00001
-    sacola_id = f"BAG-{novo_numero:05d}"
-    
-    # Criar sacola
-    sacola = models.Sacola(id=sacola_id, cpf_cliente=cpf_cliente)
-    db.add(sacola)
-    db.commit()
-    db.refresh(sacola)
-    
-    return {
-        "sucesso": True,
-        "mensagem": "Sacola criada com sucesso",
-        "sacola": {
-            "id": sacola.id,
-            "cpf_cliente": sacola.cpf_cliente,
-            "data_compra": sacola.data_compra
-        }
-    }
-
-# Endpoint: Criar múltiplas sacolas de uma vez
-@app.post("/api/sacolas/criar-lote")
-def criar_lote_sacolas(cpf_cliente: str, quantidade: int, db: Session = Depends(get_db)):
-    """Cria múltiplas sacolas para um cliente de uma vez"""
-    
-    # Verificar se cliente existe
-    cliente = db.query(models.Cliente).filter(models.Cliente.cpf == cpf_cliente).first()
-    if not cliente:
-        raise HTTPException(status_code=404, detail="Cliente não encontrado")
-    
-    if quantidade < 1 or quantidade > 20:
-        raise HTTPException(status_code=400, detail="Quantidade deve ser entre 1 e 20")
-    
-    # Buscar último ID de sacola no banco
-    ultima_sacola = db.query(models.Sacola).order_by(models.Sacola.id.desc()).first()
-    
-    if ultima_sacola:
-        # Extrair número do último ID (BAG-00123 -> 123)
-        ultimo_numero = int(ultima_sacola.id.split('-')[1])
-    else:
-        ultimo_numero = 0
-    
-    # Criar sacolas
-    sacolas_criadas = []
-    for i in range(quantidade):
-        novo_numero = ultimo_numero + i + 1
-        sacola_id = f"BAG-{novo_numero:05d}"
-        
-        sacola = models.Sacola(id=sacola_id, cpf_cliente=cpf_cliente)
-        db.add(sacola)
-        sacolas_criadas.append(sacola_id)
-    
-    db.commit()
-    
-    return {
-        "sucesso": True,
-        "mensagem": f"{quantidade} sacolas criadas com sucesso",
-        "sacolas": sacolas_criadas
-    }
-
-# Endpoint: Registrar uso de sacola
 @app.post("/api/sacolas/registrar-uso")
 def registrar_uso(sacola_id: str, db: Session = Depends(get_db)):
     """Registra o uso de uma sacola"""
@@ -270,7 +287,7 @@ def registrar_uso(sacola_id: str, db: Session = Depends(get_db)):
     if not sacola:
         raise HTTPException(status_code=404, detail="Sacola não encontrada")
     
-    if sacola.status != "ativo":
+    if sacola.status != models.StatusSacola.ativo:
         raise HTTPException(status_code=400, detail="Sacola não está ativa")
     
     if sacola.utilizacoes >= 40:
@@ -297,7 +314,6 @@ def registrar_uso(sacola_id: str, db: Session = Depends(get_db)):
         }
     }
 
-# Endpoint: Devolver sacola
 @app.post("/api/sacolas/devolver")
 def devolver_sacola(sacola_id: str, db: Session = Depends(get_db)):
     """Processa a devolução de uma sacola"""
@@ -306,15 +322,19 @@ def devolver_sacola(sacola_id: str, db: Session = Depends(get_db)):
     if not sacola:
         raise HTTPException(status_code=404, detail="Sacola não encontrada")
     
-    if sacola.status != "ativo":
-        raise HTTPException(status_code=400, detail="Sacola já foi devolvida")
+    if sacola.status != models.StatusSacola.ativo:
+        raise HTTPException(status_code=400, detail="Sacola já foi devolvida ou não está ativa")
     
     # Calcular dias de uso
-    dias_uso = (datetime.now() - sacola.data_compra).days
+    if sacola.data_vinculacao:
+        dias_uso = (datetime.now() - sacola.data_vinculacao).days
+    else:
+        dias_uso = 0
+        
     utilizacoes = sacola.utilizacoes
     
-    # Calcular desconto baseado no estado da sacola (COM MÍNIMO DE USOS)
-    if utilizacoes >= 10 and utilizacoes <= 15 and dias_uso <= 60:
+    # Calcular desconto baseado no estado da sacola (AJUSTADO: 0-15 usos)
+    if utilizacoes >= 0 and utilizacoes <= 15 and dias_uso <= 60:
         desconto = 40.00  # Verde
     elif utilizacoes >= 16 and utilizacoes <= 25 and dias_uso <= 80:
         desconto = 20.00  # Amarelo
@@ -324,15 +344,8 @@ def devolver_sacola(sacola_id: str, db: Session = Depends(get_db)):
         desconto = 0.00   # Sem desconto
     
     # Atualizar sacola
-    sacola.status = "devolvido"
+    sacola.status = models.StatusSacola.devolvido
     sacola.data_devolucao = datetime.now()
-    
-    # Criar registro de devolução
-    devolucao = models.Devolucao(
-        sacola_id=sacola_id,
-        desconto_concedido=desconto
-    )
-    db.add(devolucao)
     
     db.commit()
     
@@ -342,8 +355,186 @@ def devolver_sacola(sacola_id: str, db: Session = Depends(get_db)):
         "devolucao": {
             "sacola_id": sacola_id,
             "desconto_concedido": desconto,
-            "data_devolucao": devolucao.data_devolucao
+            "data_devolucao": sacola.data_devolucao
         }
+    }
+
+# ========== ENDPOINT DE ATIVAÇÃO ==========
+
+@app.post("/api/sacolas/ativar")
+def ativar_sacola(qr_code: str, cpf_cliente: str, db: Session = Depends(get_db)):
+    """
+    Ativa uma sacola vinculando-a a um cliente pela primeira vez
+    
+    Parâmetros:
+    - qr_code: Conteúdo completo do QR Code (ex: BAG-00001:2026-03-31:a3f9d2)
+    - cpf_cliente: CPF do cliente que vai receber a sacola
+    """
+    
+    # 1. VALIDAR QR CODE (usa função auxiliar)
+    valido, sacola_id, data_criacao, erro = validar_qrcode_checksum(qr_code)
+    
+    if not valido:
+        raise HTTPException(status_code=400, detail=erro)
+    
+    # 2. BUSCAR SACOLA NO BANCO
+    sacola = db.query(models.Sacola).filter(models.Sacola.id == sacola_id).first()
+    if not sacola:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Sacola {sacola_id} não encontrada no sistema. Verifique se o lote foi importado."
+        )
+    
+    # 3. VALIDAR CHECKSUM DO BANCO (dupla verificação)
+    if sacola.checksum != qr_code.split(':')[2]:
+        raise HTTPException(
+            status_code=403,
+            detail="Checksum não confere com registro do banco. QR Code pode estar adulterado."
+        )
+    
+    # 4. VERIFICAR SE SACOLA JÁ FOI ATIVADA
+    if sacola.status != models.StatusSacola.estoque:
+        if sacola.status == models.StatusSacola.ativo:
+            cliente = db.query(models.Cliente).filter(models.Cliente.cpf == sacola.cliente_cpf).first()
+            raise HTTPException(
+                status_code=400,
+                detail=f"Sacola já está vinculada ao cliente {cliente.nome} (CPF: {cliente.cpf})"
+            )
+        elif sacola.status == models.StatusSacola.devolvido:
+            raise HTTPException(
+                status_code=400,
+                detail="Sacola já foi devolvida e não pode ser reativada"
+            )
+    
+    # 5. VERIFICAR SE CLIENTE EXISTE
+    cliente = db.query(models.Cliente).filter(models.Cliente.cpf == cpf_cliente).first()
+    if not cliente:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Cliente com CPF {cpf_cliente} não encontrado. Cadastre o cliente primeiro."
+        )
+    
+    # 6. ATIVAR SACOLA (vincular ao cliente)
+    sacola.status = models.StatusSacola.ativo
+    sacola.cliente_cpf = cpf_cliente
+    sacola.data_vinculacao = datetime.now()
+    
+    db.commit()
+    db.refresh(sacola)
+    
+    return {
+        "sucesso": True,
+        "mensagem": f"Sacola {sacola_id} ativada e vinculada ao cliente com sucesso",
+        "sacola": {
+            "id": sacola.id,
+            "status": sacola.status.value,
+            "data_criacao": sacola.data_criacao,
+            "data_vinculacao": sacola.data_vinculacao
+        },
+        "cliente": {
+            "cpf": cliente.cpf,
+            "nome": cliente.nome
+        }
+    }
+
+# ========== ENDPOINTS DE ADMINISTRAÇÃO (LOTES) ==========
+
+@app.post("/api/admin/lotes/importar")
+def importar_lote_csv(
+    data_fabricacao: str,
+    inicio: int,
+    fim: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Importa lote de sacolas do CSV gerado
+    
+    Parâmetros:
+    - data_fabricacao: Data impressa nos QR Codes (YYYY-MM-DD)
+    - inicio: Primeiro ID do lote (ex: 1 para BAG-00001)
+    - fim: Último ID do lote (ex: 5 para BAG-00005)
+    """
+    
+    # Validar dados
+    if fim < inicio:
+        raise HTTPException(status_code=400, detail="Fim deve ser maior que início")
+    
+    quantidade = fim - inicio + 1
+    
+    # Criar registro do lote
+    lote = models.Lote(
+        data_fabricacao=data_fabricacao,
+        quantidade=quantidade,
+        inicio=inicio,
+        fim=fim
+    )
+    db.add(lote)
+    db.flush()  # Para obter o ID do lote
+    
+    # Função para gerar checksum (igual ao script)
+    SECRET_KEY = os.getenv('SECRET_KEY')
+    
+    def gerar_checksum(sacola_id, data_criacao):
+        texto = f"{sacola_id}{data_criacao}{SECRET_KEY}"
+        hash_completo = hashlib.sha256(texto.encode()).hexdigest()
+        return hash_completo[:6]
+    
+    # Criar sacolas
+    sacolas_criadas = []
+    for num in range(inicio, fim + 1):
+        sacola_id = f"BAG-{num:05d}"
+        checksum = gerar_checksum(sacola_id, data_fabricacao)
+        
+        # Verificar se já existe
+        existe = db.query(models.Sacola).filter(models.Sacola.id == sacola_id).first()
+        if existe:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Sacola {sacola_id} já existe no sistema"
+            )
+        
+        sacola = models.Sacola(
+            id=sacola_id,
+            data_criacao=data_fabricacao,
+            checksum=checksum,
+            status=models.StatusSacola.estoque,
+            lote_id=lote.id
+        )
+        db.add(sacola)
+        sacolas_criadas.append(sacola_id)
+    
+    db.commit()
+    
+    return {
+        "sucesso": True,
+        "mensagem": f"Lote importado com sucesso",
+        "lote": {
+            "id": lote.id,
+            "data_fabricacao": data_fabricacao,
+            "quantidade": quantidade,
+            "inicio": f"BAG-{inicio:05d}",
+            "fim": f"BAG-{fim:05d}"
+        },
+        "sacolas_criadas": len(sacolas_criadas)
+    }
+
+@app.get("/api/admin/lotes")
+def listar_lotes(db: Session = Depends(get_db)):
+    """Lista todos os lotes importados"""
+    lotes = db.query(models.Lote).all()
+    
+    return {
+        "total": len(lotes),
+        "lotes": [
+            {
+                "id": l.id,
+                "data_fabricacao": l.data_fabricacao,
+                "data_importacao": l.data_importacao,
+                "quantidade": l.quantidade,
+                "intervalo": f"BAG-{l.inicio:05d} até BAG-{l.fim:05d}"
+            }
+            for l in lotes
+        ]
     }
 
 if __name__ == "__main__":
