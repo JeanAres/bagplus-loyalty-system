@@ -1,5 +1,5 @@
 # backend/models.py
-from sqlalchemy import Column, String, Integer, DateTime, Float, ForeignKey, Enum
+from sqlalchemy import Column, String, Integer, DateTime, Float, ForeignKey, Enum, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from datetime import datetime
@@ -18,6 +18,18 @@ class StatusBeneficios(str, enum.Enum):
     ativo = "ativo"
     suspenso = "suspenso"
     bloqueado = "bloqueado"
+
+class TipoAlerta(str, enum.Enum):
+    """Tipos de alertas de detecção"""
+    valores_diferentes_mesmo_dia = "valores_diferentes_mesmo_dia"
+    valor_repetido_dias_diferentes = "valor_repetido_dias_diferentes"
+    abuso_valor_minimo = "abuso_valor_minimo"
+
+class GravidadeAlerta(str, enum.Enum):
+    """Gravidade dos alertas"""
+    baixa = "baixa"
+    media = "media"
+    alta = "alta"
 
 class Lote(Base):
     """Lote de sacolas fabricadas"""
@@ -47,6 +59,7 @@ class Cliente(Base):
     data_suspensao = Column(DateTime, nullable=True)
     
     sacolas = relationship("Sacola", back_populates="cliente")
+    alertas = relationship("Alerta", back_populates="cliente")
 
 class Sacola(Base):
     """Sacola reutilizável do programa"""
@@ -80,3 +93,19 @@ class RegistroUso(Base):
     valor_compra = Column(Float, nullable=False)
     
     sacola = relationship("Sacola", back_populates="registros")
+
+class Alerta(Base):
+    """Alertas de detecção de padrões suspeitos"""
+    __tablename__ = "alertas"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    tipo = Column(Enum(TipoAlerta), nullable=False)
+    gravidade = Column(Enum(GravidadeAlerta), nullable=False)
+    cliente_cpf = Column(String, ForeignKey("clientes.cpf"), nullable=False)
+    descricao = Column(String, nullable=False)
+    data_deteccao = Column(DateTime, default=datetime.now)
+    resolvido = Column(Boolean, default=False)
+    observacao = Column(String, nullable=True)
+    data_resolucao = Column(DateTime, nullable=True)
+    
+    cliente = relationship("Cliente", back_populates="alertas")

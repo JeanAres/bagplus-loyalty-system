@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from database import get_db, engine
 import models
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 import hashlib
 
@@ -59,6 +59,153 @@ def validar_qrcode_checksum(qr_code: str):
     
     # TUDO VÁLIDO
     return True, sacola_id, data_criacao, None
+
+# ========== FUNÇÕES DE DETECÇÃO DE PADRÕES ==========
+
+def detectar_valores_diferentes_mesmo_dia(cliente_cpf: str, db: Session):
+    """
+    Detecta uso de múltiplas sacolas com valores diferentes no mesmo dia
+    
+    Lógica: Se é rancho, todos os valores devem ser iguais.
+    Se tem 4+ sacolas com valores diferentes = SUSPEITO
+    """
+    hoje_inicio = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    
+    # Buscar registros de hoje
+    registros_hoje = db.query(models.RegistroUso).join(
+        models.Sacola
+    ).filter(
+        models.Sacola.cliente_cpf == cliente_cpf,
+        models.RegistroUso.data_uso >= hoje_inicio
+    ).all()
+    
+    if len(registros_hoje) < 4:
+        return  # Poucos usos, normal
+    
+    # Verificar quantos valores únicos existem
+    valores = [r.valor_compra for r in registros_hoje]
+    valores_unicos = len(set(valores))
+    
+    # Se tem mais de 2 valores diferentes = suspeito
+    if valores_unicos > 2:
+        # Verificar se alerta já existe hoje
+        alerta_existe = db.query(models.Alerta).filter(
+            models.Alerta.cliente_cpf == cliente_cpf,
+            models.Alerta.tipo == models.TipoAlerta.valores_diferentes_mesmo_dia,
+            models.Alerta.data_deteccao >= hoje_inicio,
+            models.Alerta.resolvido == False
+        ).first()
+        
+        if not alerta_existe:
+            alerta = models.Alerta(
+                tipo=models.TipoAlerta.valores_diferentes_mesmo_dia,
+                gravidade=models.GravidadeAlerta.alta,
+                cliente_cpf=cliente_cpf,
+                descricao=f"Cliente usou {len(registros_hoje)} sacolas hoje com {valores_unicos} valores diferentes (esperado: valor único em rancho)"
+            )
+            db.add(alerta)
+            db.commit()
+
+def detectar_valor_repetido_dias_diferentes(cliente_cpf: str, db: Session):
+    """
+    Detecta se cliente sempre compra mesmo valor em dias separados
+    
+    Lógica: Se em 5+ dias diferentes sempre usa mesmo valor = SUSPEITO
+    """
+    trinta_dias_atras = datetime.now() - timedelta(days=30)
+    
+    registros = db.query(models.RegistroUso).join(
+        models.Sacola
+    ).filter(
+        models.Sacola.cliente_cpf == cliente_cpf,
+        models.RegistroUso.data_uso >= trinta_dias_atras
+    ).all()
+    
+    if len(registros) < 10:
+        return  # Poucos dados
+    
+    # Agrupar por dia
+    usos_por_dia = {}
+    for r in registros:
+        dia = r.data_uso.date()
+        if dia not in usos_por_dia:
+            usos_por_dia[dia] = []
+        usos_por_dia[dia].append(r.valor_compra)
+    
+    if len(usos_por_dia) < 5:
+        return  # Poucos dias diferentes
+    
+    # Para cada dia, pegar o valor mais usado
+    valores_por_dia = []
+    for dia, valores in usos_por_dia.items():
+        # Se dia tem valores iguais (rancho), pega qualquer um
+        # Se dia tem valores diferentes, pega o mais comum
+        valor_mais_comum = max(set(valores), key=valores.count)
+        valores_por_dia.append(valor_mais_comum)
+    
+    # Verificar se sempre mesmo valor entre dias
+    valor_mais_comum_geral = max(set(valores_por_dia), key=valores_por_dia.count)
+    repeticoes = valores_por_dia.count(valor_mais_comum_geral)
+    percentual = (repeticoes / len(valores_por_dia)) * 100
+    
+    if percentual >= 80:
+        # Verificar se alerta já existe
+        alerta_existe = db.query(models.Alerta).filter(
+            models.Alerta.cliente_cpf == cliente_cpf,
+            models.Alerta.tipo == models.TipoAlerta.valor_repetido_dias_diferentes,
+            models.Alerta.resolvido == False
+        ).first()
+        
+        if not alerta_existe:
+            alerta = models.Alerta(
+                tipo=models.TipoAlerta.valor_repetido_dias_diferentes,
+                gravidade=models.GravidadeAlerta.media,
+                cliente_cpf=cliente_cpf,
+                descricao=f"Cliente compra sempre R$ {valor_mais_comum_geral:.2f} em {repeticoes} de {len(valores_por_dia)} dias diferentes (últimos 30 dias)"
+            )
+            db.add(alerta)
+            db.commit()
+
+def detectar_abuso_valor_minimo(cliente_cpf: str, db: Session):
+    """
+    Detecta uso excessivo com valor mínimo
+    
+    Lógica: Se usa 8+ sacolas no mesmo dia, todas com R$ 15,00 = SUSPEITO
+    """
+    hoje_inicio = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    
+    registros_hoje = db.query(models.RegistroUso).join(
+        models.Sacola
+    ).filter(
+        models.Sacola.cliente_cpf == cliente_cpf,
+        models.RegistroUso.data_uso >= hoje_inicio
+    ).all()
+    
+    if len(registros_hoje) < 8:
+        return  # Menos de 8 sacolas, ok
+    
+    # Contar quantos são R$ 15,00
+    valores_minimos = [r for r in registros_hoje if r.valor_compra == 15.00]
+    percentual_minimo = (len(valores_minimos) / len(registros_hoje)) * 100
+    
+    if percentual_minimo >= 90:
+        # Verificar se alerta já existe hoje
+        alerta_existe = db.query(models.Alerta).filter(
+            models.Alerta.cliente_cpf == cliente_cpf,
+            models.Alerta.tipo == models.TipoAlerta.abuso_valor_minimo,
+            models.Alerta.data_deteccao >= hoje_inicio,
+            models.Alerta.resolvido == False
+        ).first()
+        
+        if not alerta_existe:
+            alerta = models.Alerta(
+                tipo=models.TipoAlerta.abuso_valor_minimo,
+                gravidade=models.GravidadeAlerta.alta,
+                cliente_cpf=cliente_cpf,
+                descricao=f"Cliente usou {len(registros_hoje)} sacolas hoje, {len(valores_minimos)} com valor mínimo R$ 15,00 (possível fraude)"
+            )
+            db.add(alerta)
+            db.commit()
 
 # ========== CONFIGURAÇÃO DO APP ==========
 
@@ -283,7 +430,7 @@ def registrar_uso(
     sacola_id: str, 
     valor_compra: str,
     db: Session = Depends(get_db)
-):
+    ):
     """Registra o uso de uma sacola com valor da compra"""
     
     sacola = db.query(models.Sacola).filter(models.Sacola.id == sacola_id).first()
@@ -344,6 +491,12 @@ def registrar_uso(
             detail="Valor da compra não pode ser negativo"
         )
     
+    if valor_float < 15.00:
+        raise HTTPException(
+            status_code=400,
+            detail="Valor mínimo de compra: R$ 15,00"
+    )
+    
     # Atualizar sacola
     sacola.utilizacoes += 1
     sacola.ultima_utilizacao = datetime.now()
@@ -357,6 +510,14 @@ def registrar_uso(
     
     db.commit()
     db.refresh(sacola)
+
+    try:
+        detectar_valores_diferentes_mesmo_dia(sacola.cliente_cpf, db)
+        detectar_valor_repetido_dias_diferentes(sacola.cliente_cpf, db)
+        detectar_abuso_valor_minimo(sacola.cliente_cpf, db)
+    except Exception as e:
+        # Não bloquear registro se detecção falhar
+        print(f"Erro na detecção de padrões: {e}")
     
     return {
         "sucesso": True,
@@ -794,6 +955,127 @@ def listar_clientes_suspensos(db: Session = Depends(get_db)):
             }
             for c in clientes_suspensos
         ]
+    }
+
+# ========== ENDPOINTS DE ALERTAS ==========
+
+@app.get("/api/admin/alertas")
+def listar_alertas(
+    resolvido: bool = None,
+    gravidade: str = None,
+    tipo: str = None,
+    db: Session = Depends(get_db)
+):
+    """
+    Lista alertas com filtros opcionais
+    
+    Parâmetros:
+    - resolvido: true/false (opcional)
+    - gravidade: baixa/media/alta (opcional)
+    - tipo: tipo do alerta (opcional)
+    """
+    query = db.query(models.Alerta)
+    
+    # Aplicar filtros
+    if resolvido is not None:
+        query = query.filter(models.Alerta.resolvido == resolvido)
+    
+    if gravidade:
+        try:
+            grav = models.GravidadeAlerta(gravidade)
+            query = query.filter(models.Alerta.gravidade == grav)
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Gravidade inválida. Use: baixa, media ou alta"
+            )
+    
+    if tipo:
+        try:
+            tipo_enum = models.TipoAlerta(tipo)
+            query = query.filter(models.Alerta.tipo == tipo_enum)
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Tipo inválido"
+            )
+    
+    alertas = query.order_by(models.Alerta.data_deteccao.desc()).all()
+    
+    # Buscar informações do cliente para cada alerta
+    alertas_data = []
+    for alerta in alertas:
+        cliente = db.query(models.Cliente).filter(
+            models.Cliente.cpf == alerta.cliente_cpf
+        ).first()
+        
+        alertas_data.append({
+            "id": alerta.id,
+            "tipo": alerta.tipo.value,
+            "gravidade": alerta.gravidade.value,
+            "cliente": {
+                "cpf": alerta.cliente_cpf,
+                "nome": cliente.nome if cliente else "Desconhecido"
+            },
+            "descricao": alerta.descricao,
+            "data_deteccao": alerta.data_deteccao,
+            "resolvido": alerta.resolvido,
+            "observacao": alerta.observacao,
+            "data_resolucao": alerta.data_resolucao
+        })
+    
+    return {
+        "total": len(alertas_data),
+        "alertas": alertas_data
+    }
+
+@app.post("/api/admin/alertas/{alerta_id}/resolver")
+def resolver_alerta(
+    alerta_id: int,
+    observacao: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Marca um alerta como resolvido
+    
+    Parâmetros:
+    - alerta_id: ID do alerta
+    - observacao: Observação sobre a resolução
+    """
+    alerta = db.query(models.Alerta).filter(models.Alerta.id == alerta_id).first()
+    if not alerta:
+        raise HTTPException(status_code=404, detail="Alerta não encontrado")
+    
+    if alerta.resolvido:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Alerta já foi resolvido em {alerta.data_resolucao}"
+        )
+    
+    if not observacao or len(observacao.strip()) < 10:
+        raise HTTPException(
+            status_code=400,
+            detail="Observação deve ter pelo menos 10 caracteres"
+        )
+    
+    # Marcar como resolvido
+    alerta.resolvido = True
+    alerta.observacao = observacao.strip()
+    alerta.data_resolucao = datetime.now()
+    
+    db.commit()
+    db.refresh(alerta)
+    
+    return {
+        "sucesso": True,
+        "mensagem": "Alerta marcado como resolvido",
+        "alerta": {
+            "id": alerta.id,
+            "tipo": alerta.tipo.value,
+            "resolvido": alerta.resolvido,
+            "observacao": alerta.observacao,
+            "data_resolucao": alerta.data_resolucao
+        }
     }
 
 if __name__ == "__main__":
