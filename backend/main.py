@@ -293,8 +293,23 @@ def registrar_uso(
     if sacola.status != models.StatusSacola.ativo:
         raise HTTPException(status_code=400, detail="Sacola não está ativa")
     
+    # Verificar se cliente está suspenso
+    cliente = db.query(models.Cliente).filter(models.Cliente.cpf == sacola.cliente_cpf).first()
+    if cliente and cliente.status_beneficios != models.StatusBeneficios.ativo:
+        if cliente.status_beneficios == models.StatusBeneficios.suspenso:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Cliente suspenso. Motivo: {cliente.motivo_suspensao or 'Não especificado'}"
+            )
+        elif cliente.status_beneficios == models.StatusBeneficios.bloqueado:
+            raise HTTPException(
+                status_code=403,
+                detail="Cliente bloqueado permanentemente do programa"
+            )
+    
     if sacola.utilizacoes >= 40:
         raise HTTPException(status_code=400, detail="Sacola atingiu limite de 40 utilizações")
+    
     
     # Validar intervalo de 4 horas entre usos
     if sacola.ultima_utilizacao:
@@ -656,6 +671,128 @@ def listar_lotes(db: Session = Depends(get_db)):
                 "intervalo": f"BAG-{l.inicio:05d} até BAG-{l.fim:05d}"
             }
             for l in lotes
+        ]
+    }
+
+# ========== ENDPOINTS DE ADMINISTRAÇÃO - SUSPENSÃO  ==========
+
+@app.post("/api/admin/clientes/{cpf}/suspender")
+def suspender_cliente(
+    cpf: str,
+    motivo: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Suspende um cliente do programa de fidelização
+    
+    Parâmetros:
+    - cpf: CPF do cliente
+    - motivo: Motivo da suspensão
+    """
+    # Buscar cliente
+    cliente = db.query(models.Cliente).filter(models.Cliente.cpf == cpf).first()
+    if not cliente:
+        raise HTTPException(status_code=404, detail="Cliente não encontrado")
+    
+    # Verificar se já está suspenso
+    if cliente.status_beneficios == models.StatusBeneficios.suspenso:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cliente já está suspenso desde {cliente.data_suspensao}"
+        )
+    
+    # Validar motivo
+    if not motivo or len(motivo.strip()) < 10:
+        raise HTTPException(
+            status_code=400,
+            detail="Motivo da suspensão deve ter pelo menos 10 caracteres"
+        )
+    
+    # Suspender cliente
+    cliente.status_beneficios = models.StatusBeneficios.suspenso
+    cliente.motivo_suspensao = motivo.strip()
+    cliente.data_suspensao = datetime.now()
+    
+    db.commit()
+    db.refresh(cliente)
+    
+    return {
+        "sucesso": True,
+        "mensagem": "Cliente suspenso com sucesso",
+        "cliente": {
+            "cpf": cliente.cpf,
+            "nome": cliente.nome,
+            "status_beneficios": cliente.status_beneficios.value,
+            "motivo_suspensao": cliente.motivo_suspensao,
+            "data_suspensao": cliente.data_suspensao
+        }
+    }
+
+@app.post("/api/admin/clientes/{cpf}/reativar")
+def reativar_cliente(cpf: str, db: Session = Depends(get_db)):
+    """
+    Reativa um cliente suspenso
+    
+    Parâmetros:
+    - cpf: CPF do cliente
+    """
+    # Buscar cliente
+    cliente = db.query(models.Cliente).filter(models.Cliente.cpf == cpf).first()
+    if not cliente:
+        raise HTTPException(status_code=404, detail="Cliente não encontrado")
+    
+    # Verificar se está suspenso
+    if cliente.status_beneficios == models.StatusBeneficios.ativo:
+        raise HTTPException(status_code=400, detail="Cliente já está ativo")
+    
+    if cliente.status_beneficios == models.StatusBeneficios.bloqueado:
+        raise HTTPException(
+            status_code=400,
+            detail="Cliente bloqueado permanentemente. Não pode ser reativado."
+        )
+    
+    # Reativar cliente
+    cliente.status_beneficios = models.StatusBeneficios.ativo
+    cliente.motivo_suspensao = None
+    cliente.data_suspensao = None
+    
+    db.commit()
+    db.refresh(cliente)
+    
+    return {
+        "sucesso": True,
+        "mensagem": "Cliente reativado com sucesso",
+        "cliente": {
+            "cpf": cliente.cpf,
+            "nome": cliente.nome,
+            "status_beneficios": cliente.status_beneficios.value
+        }
+    }
+
+@app.get("/api/admin/clientes/suspensos")
+def listar_clientes_suspensos(db: Session = Depends(get_db)):
+    """
+    Lista todos os clientes suspensos ou bloqueados
+    """
+    clientes_suspensos = db.query(models.Cliente).filter(
+        models.Cliente.status_beneficios.in_([
+            models.StatusBeneficios.suspenso,
+            models.StatusBeneficios.bloqueado
+        ])
+    ).all()
+    
+    return {
+        "total": len(clientes_suspensos),
+        "clientes": [
+            {
+                "cpf": c.cpf,
+                "nome": c.nome,
+                "status_beneficios": c.status_beneficios.value,
+                "motivo_suspensao": c.motivo_suspensao,
+                "data_suspensao": c.data_suspensao,
+                "data_cadastro": c.data_cadastro
+            }
+            for c in clientes_suspensos
         ]
     }
 
