@@ -8,7 +8,7 @@ from database import engine
 import models
 
 # Importar routers
-from routers import clientes, sacolas, admin_lotes, admin_suspensao, admin_alertas, admin_relatorios, admin_sacolas
+from routers import clientes, sacolas, admin_lotes, admin_suspensao, admin_alertas, admin_relatorios, admin_sacolas, admin_exportar
 
 # Criar tabelas
 models.Base.metadata.create_all(bind=engine)
@@ -18,26 +18,39 @@ app = FastAPI(
     title="Bag+ API",
     version="1.0.0",
     description="""
-    Sistema completo de gerenciamento de sacolas reutilizáveis com programa de fidelidade.
+    Sistema de gerenciamento de sacolas reutilizáveis com programa de fidelidade.
     
-    ## Funcionalidades
+    ## Módulos Públicos (15 endpoints)
     
-    * **Clientes** - Cadastro e gerenciamento de clientes
-    * **Sacolas** - Ativação, uso e devolução de sacolas reutilizáveis
-    * **Admin - Lotes** - Importação e gerenciamento de lotes de sacolas
-    * **Admin - Suspensão** - Suspensão e reativação de clientes
-    * **Admin - Alertas** - Detecção automática de padrões suspeitos
+    **Clientes (8):** Cadastro, busca por nome, validação de CPF, listagem de sacolas, 
+    estatísticas, histórico completo, exclusão restritiva.
+    
+    **Sacolas (7):** Ativação, registro de uso, devolução, consulta, listagem, 
+    histórico de uso, verificação de QR Code.
+    
+    ## Módulos Administrativos (17 endpoints)
+    
+    **Lotes (2):** Importação de lotes, listagem com distribuição por status.
+    
+    **Clientes (3):** Suspensão, reativação, listagem de clientes suspensos/bloqueados.
+    
+    **Alertas (2):** Listagem de alertas detectados, resolução com observações.
+    
+    **Relatórios (3):** Dashboard geral, relatório de vendas por período, estatísticas consolidadas.
+    
+    **Sacolas (4):** Sacolas próximas do limite, consulta de estoque, transferência entre clientes, 
+    reset de contador.
+    
+    **Exportação (3):** Exportar clientes, sacolas e registros de uso para CSV.
     
     ## Segurança
     
-    * QR Codes com checksum SHA256 anti-falsificação
-    * Validação de intervalo mínimo entre usos (4 horas)
-    * Detecção automática de fraudes
-    * Sistema de suspensão de clientes
+    QR Codes com checksum SHA256, validação de intervalo mínimo entre usos (4h), 
+    detecção automática de fraudes, sistema de suspensão, limite de 40 usos por sacola.
     
-    ## Suporte
+    ## Total: 32 endpoints funcionais
     
-    Email: jean06soares@gmail.com
+    Suporte: jean06soares@gmail.com
     """,
     contact={
         "name": "Bag+ Suporte",
@@ -66,6 +79,7 @@ app.include_router(admin_suspensao.router)
 app.include_router(admin_alertas.router)
 app.include_router(admin_relatorios.router)
 app.include_router(admin_sacolas.router)
+app.include_router(admin_exportar.router)
 
 @app.get(
     "/",
@@ -79,8 +93,9 @@ def read_root():
         "api": "Bag+ - Sistema de Fidelização Sustentável",
         "version": "1.0.0",
         "status": "online",
+        "endpoints": 32,
         "docs": "/docs",
-        "message": "Sua sacola vale mais. 🌱"
+        "message": "Sua sacola vale mais."
     }
 
 if __name__ == "__main__":
