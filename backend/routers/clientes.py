@@ -106,6 +106,82 @@ def listar_clientes(db: Session = Depends(get_db)):
 
 
 @router.get(
+    "/buscar",
+    summary="Buscar cliente por nome",
+    description="""
+    Busca clientes pelo nome (busca parcial, case-insensitive).
+    
+    **Funcionalidade:**
+    - Busca por nome parcial (ex: "joão" encontra "João Silva", "Maria João")
+    - Case-insensitive (maiúsculas/minúsculas não importam)
+    - Retorna todos os clientes que contêm o termo buscado
+    
+    **Informações retornadas:**
+    - CPF do cliente
+    - Nome completo
+    - Quantidade de sacolas ativas
+    - Status dos benefícios
+    
+    **Quando usar:**
+    - Caixa sabe o nome mas não o CPF
+    - Buscar cliente rapidamente
+    - Listar clientes com nome similar
+    
+    **Parâmetro:**
+    - nome: Termo de busca (mínimo 3 caracteres)
+    
+    **Exemplos:**
+```
+    GET /api/clientes/buscar?nome=joão
+    GET /api/clientes/buscar?nome=silva
+    GET /api/clientes/buscar?nome=maria
+```
+    
+    **Observação:** 
+    - Retorna lista vazia se nenhum cliente corresponder
+    - Limite de 20 resultados para performance
+    """
+)
+def buscar_cliente_por_nome(nome: str, db: Session = Depends(get_db)):
+    """Busca clientes por nome (parcial)"""
+    
+    # Validar termo de busca
+    if len(nome.strip()) < 3:
+        raise HTTPException(
+            status_code=400,
+            detail="Nome deve ter pelo menos 3 caracteres para busca"
+        )
+    
+    # Buscar clientes (LIKE case-insensitive)
+    termo_busca = f"%{nome.strip()}%"
+    clientes = db.query(models.Cliente).filter(
+        models.Cliente.nome.ilike(termo_busca)
+    ).limit(20).all()
+    
+    # Montar resultado
+    resultado = []
+    for cliente in clientes:
+        # Contar sacolas ativas
+        sacolas_ativas = db.query(models.Sacola).filter(
+            models.Sacola.cliente_cpf == cliente.cpf,
+            models.Sacola.status == models.StatusSacola.ativo
+        ).count()
+        
+        resultado.append({
+            "cpf": cliente.cpf,
+            "nome": cliente.nome,
+            "sacolas_ativas": sacolas_ativas,
+            "status_beneficios": cliente.status_beneficios.value
+        })
+    
+    return {
+        "total_encontrados": len(resultado),
+        "termo_buscado": nome.strip(),
+        "clientes": resultado
+    }
+
+
+@router.get(
     "/{cpf}/sacolas",
     summary="Listar sacolas do cliente",
     description="""
@@ -209,6 +285,199 @@ def estatisticas_cliente(cpf: str, db: Session = Depends(get_db)):
             "total_usos": total_usos,
             "sacolas_ativas": sacolas_ativas
         }
+    }
+
+
+@router.get(
+    "/{cpf}/historico-completo",
+    summary="Histórico completo do cliente",
+    description="""
+    Retorna timeline completa de TUDO que o cliente fez no sistema.
+    
+    **Informações consolidadas:**
+    
+    ** Dados do Cliente:**
+    - CPF, nome, data de cadastro
+    - Status atual dos benefícios
+    
+    ** Resumo de Compras:**
+    - Total gasto em todas as compras
+    - Valor médio por compra
+    - Total de usos realizados
+    - Primeira e última compra
+    
+    ** Sacolas:**
+    - Sacolas ativas (em uso)
+    - Sacolas devolvidas (histórico)
+    - Total de sacolas já vinculadas
+    
+    ** Alertas:**
+    - Alertas detectados automaticamente
+    - Status de resolução
+    - Observações dos alertas resolvidos
+    
+    ** Suspensões:**
+    - Histórico de suspensões (se houver)
+    - Motivos de suspensão
+    - Datas de suspensão/reativação
+    
+    ** Timeline:**
+    - Eventos ordenados por data (mais recente primeiro)
+    - Tipos: cadastro, vinculação, uso, devolução, alerta, suspensão
+    
+    **Quando usar:**
+    - Suporte ao cliente
+    - Investigação de fraudes
+    - Auditoria de histórico
+    - Análise de comportamento
+    
+    **Parâmetro:**
+    - cpf: CPF do cliente (11 dígitos)
+    
+    **Observação:** Timeline pode ser extensa para clientes antigos
+    """
+)
+def historico_completo_cliente(cpf: str, db: Session = Depends(get_db)):
+    """Retorna histórico completo e timeline do cliente"""
+    
+    # Buscar cliente
+    cliente = db.query(models.Cliente).filter(models.Cliente.cpf == cpf).first()
+    if not cliente:
+        raise HTTPException(status_code=404, detail="Cliente não encontrado")
+    
+    # ========== RESUMO DE COMPRAS ==========
+    registros = db.query(models.RegistroUso).join(
+        models.Sacola
+    ).filter(
+        models.Sacola.cliente_cpf == cpf
+    ).all()
+    
+    total_gasto = sum(r.valor_compra for r in registros)
+    total_usos = len(registros)
+    valor_medio = total_gasto / total_usos if total_usos > 0 else 0
+    
+    primeira_compra = min([r.data_uso for r in registros]) if registros else None
+    ultima_compra = max([r.data_uso for r in registros]) if registros else None
+    
+    # ========== SACOLAS ==========
+    sacolas_ativas = db.query(models.Sacola).filter(
+        models.Sacola.cliente_cpf == cpf,
+        models.Sacola.status == models.StatusSacola.ativo
+    ).all()
+    
+    sacolas_devolvidas = db.query(models.Sacola).filter(
+        models.Sacola.cliente_cpf == cpf,
+        models.Sacola.status == models.StatusSacola.devolvido
+    ).all()
+    
+    total_sacolas = len(sacolas_ativas) + len(sacolas_devolvidas)
+    
+    # ========== ALERTAS ==========
+    alertas = db.query(models.Alerta).filter(
+        models.Alerta.cliente_cpf == cpf
+    ).order_by(models.Alerta.data_deteccao.desc()).all()
+    
+    alertas_data = []
+    for alerta in alertas:
+        alertas_data.append({
+            "tipo": alerta.tipo.value,
+            "gravidade": alerta.gravidade.value,
+            "descricao": alerta.descricao,
+            "data_deteccao": alerta.data_deteccao,
+            "resolvido": alerta.resolvido,
+            "observacao": alerta.observacao
+        })
+    
+    # ========== TIMELINE ==========
+    timeline = []
+    
+    # Evento: Cadastro
+    timeline.append({
+        "tipo": "cadastro",
+        "data": cliente.data_cadastro,
+        "descricao": f"Cliente {cliente.nome} cadastrado no sistema"
+    })
+    
+    # Eventos: Vinculações de sacolas
+    for sacola in sacolas_ativas + sacolas_devolvidas:
+        if sacola.data_vinculacao:
+            timeline.append({
+                "tipo": "vinculacao",
+                "data": sacola.data_vinculacao,
+                "descricao": f"Sacola {sacola.id} vinculada ao cliente"
+            })
+    
+    # Eventos: Usos
+    for registro in registros:
+        timeline.append({
+            "tipo": "uso",
+            "data": registro.data_uso,
+            "descricao": f"Compra de R$ {registro.valor_compra:.2f}",
+            "valor": registro.valor_compra
+        })
+    
+    # Eventos: Devoluções
+    for sacola in sacolas_devolvidas:
+        if sacola.data_devolucao:
+            timeline.append({
+                "tipo": "devolucao",
+                "data": sacola.data_devolucao,
+                "descricao": f"Sacola {sacola.id} devolvida"
+            })
+    
+    # Eventos: Alertas
+    for alerta in alertas:
+        timeline.append({
+            "tipo": "alerta",
+            "data": alerta.data_deteccao,
+            "descricao": f"Alerta: {alerta.descricao}",
+            "gravidade": alerta.gravidade.value
+        })
+    
+    # Evento: Suspensão (se houver)
+    if cliente.data_suspensao:
+        timeline.append({
+            "tipo": "suspensao",
+            "data": cliente.data_suspensao,
+            "descricao": f"Cliente suspenso. Motivo: {cliente.motivo_suspensao}"
+        })
+    
+    # Ordenar timeline por data (mais recente primeiro)
+    timeline.sort(key=lambda x: x['data'], reverse=True)
+    
+    # ========== MONTAR RESPONSE ==========
+    return {
+        "cliente": {
+            "cpf": cliente.cpf,
+            "nome": cliente.nome,
+            "data_cadastro": cliente.data_cadastro,
+            "status_beneficios": cliente.status_beneficios.value,
+            "motivo_suspensao": cliente.motivo_suspensao,
+            "data_suspensao": cliente.data_suspensao
+        },
+        
+        "resumo_compras": {
+            "total_gasto": round(total_gasto, 2),
+            "valor_medio_compra": round(valor_medio, 2),
+            "total_usos": total_usos,
+            "primeira_compra": primeira_compra,
+            "ultima_compra": ultima_compra
+        },
+        
+        "sacolas": {
+            "total_sacolas_vinculadas": total_sacolas,
+            "ativas": len(sacolas_ativas),
+            "devolvidas": len(sacolas_devolvidas),
+            "lista_ativas": [s.id for s in sacolas_ativas],
+            "lista_devolvidas": [s.id for s in sacolas_devolvidas]
+        },
+        
+        "alertas": {
+            "total": len(alertas),
+            "lista": alertas_data
+        },
+        
+        "timeline": timeline
     }
 
 

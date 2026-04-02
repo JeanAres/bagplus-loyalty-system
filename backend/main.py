@@ -8,7 +8,7 @@ from database import engine
 import models
 
 # Importar routers
-from routers import clientes, sacolas, admin_lotes, admin_suspensao, admin_alertas
+from routers import clientes, sacolas, admin_lotes, admin_suspensao, admin_alertas, admin_dashboard
 
 # Criar tabelas
 models.Base.metadata.create_all(bind=engine)
@@ -64,6 +64,7 @@ app.include_router(sacolas.router)
 app.include_router(admin_lotes.router)
 app.include_router(admin_suspensao.router)
 app.include_router(admin_alertas.router)
+app.include_router(admin_dashboard.router)
 
 
 @app.get(
