@@ -1,10 +1,10 @@
 # Bag+ - Sistema de Fidelização Sustentável
 
-> ⚠️ **AVISO IMPORTANTE:** Este é um projeto comercial. O código está disponível 
+> **AVISO IMPORTANTE:** Este é um projeto comercial. O código está disponível 
 > para avaliação e portfólio, mas **uso comercial requer licença**. 
 > Entre em contato para implementação: jean06soares@gmail.com
 
-Sistema completo de gerenciamento de sacolas reutilizáveis com programa de recompensas, QR Codes com segurança anti-falsificação, detecção automática de fraudes e sistema de suspensão de clientes.
+Sistema completo de gerenciamento de sacolas reutilizáveis com programa de recompensas, QR Codes com segurança anti-falsificação, detecção automática de fraudes, sistema de suspensão de clientes, relatórios gerenciais e exportação de dados.
 
 > Para entender o conceito e proposta do negócio, veja [PROPOSTA.md](PROPOSTA.md)
 
@@ -19,7 +19,7 @@ Sistema completo de gerenciamento de sacolas reutilizáveis com programa de reco
 - **Validação de checksum dupla** - No QR Code e no banco de dados
 
 ### Detecção Automática de Fraudes
-- **Valores diferentes no mesmo dia** - Alerta se cliente usa múltiplas sacolas com valores variados (esperado: rancho com valores iguais)
+- **Valores diferentes no mesmo dia** - Alerta se cliente usa múltiplas sacolas com valores variados
 - **Abuso de valor mínimo** - Alerta se cliente usa 8+ sacolas com R$ 15,00 no mesmo dia
 - **Padrão de valores repetidos** - Alerta se cliente sempre compra mesmo valor em dias diferentes
 - **Sistema de alertas** - Gravidade baixa/média/alta com resolução manual
@@ -27,7 +27,9 @@ Sistema completo de gerenciamento de sacolas reutilizáveis com programa de reco
 ### Gestão de Clientes
 - **Sistema de suspensão** - Suspender/reativar clientes com motivo registrado
 - **Bloqueio de uso** - Clientes suspensos não podem usar sacolas
-- **Histórico de compras** - Rastreamento completo de valores gastos
+- **Histórico completo** - Timeline de eventos do cliente
+- **Busca por nome** - Busca parcial e case-insensitive
+- **Validação de CPF** - Verificar existência sem criar cadastro
 - **Estatísticas por cliente** - Total gasto, valor médio, total de usos
 
 ### Sistema de Descontos
@@ -41,6 +43,19 @@ Sistema completo de gerenciamento de sacolas reutilizáveis com programa de reco
 - **Geração em massa de QR Codes** - Até 5.000 sacolas por lote
 - **Importação de lotes** - Via API com recalculo automático de checksums
 - **Rastreamento completo** - Data de fabricação, intervalo de IDs, quantidade
+- **Controle de estoque** - Consulta de disponibilidade por lote
+
+### Relatórios e Analytics
+- **Dashboard administrativo** - Visão geral completa do negócio
+- **Relatórios de vendas** - Por período com detalhamento diário
+- **Estatísticas gerais** - Taxa de devolução, recordes, crescimento
+- **Top performers** - Clientes que mais usam e mais gastam
+- **Exportação CSV** - Clientes, sacolas e usos para análise externa
+
+### Operações Especiais
+- **Transferência de sacolas** - Entre clientes com rastreamento
+- **Reset de contador** - Correção de erros com validação rigorosa
+- **Sacolas próximas do limite** - Identificar sacolas perto de expirar
 
 ---
 
@@ -55,7 +70,7 @@ Sistema completo de gerenciamento de sacolas reutilizáveis com programa de reco
 ### Instalação
 ```bash
 # 1. Clonar repositório
-git clone https://github.com/SEU-USUARIO/bagplus-loyalty-system.git
+git clone https://github.com/JeanAres/bagplus-loyalty-system.git
 cd bagplus-loyalty-system
 
 # 2. Criar ambiente virtual Python
@@ -95,11 +110,20 @@ O servidor estará rodando em `http://localhost:8000`
 ```
 bagplus-loyalty-system/
 ├── backend/                    # API FastAPI
-│   ├── main.py                # Servidor principal com todos endpoints
-│   ├── models.py              # Modelos do banco (Cliente, Sacola, Lote, Alerta, etc)
-│   ├── database.py            # Configuração SQLAlchemy
-│   ├── requirements.txt       # Dependências Python
-│   └── .env                   # Variáveis de ambiente (SECRET_KEY)
+│   ├── routers/               # Módulos da API (8 routers)
+│   │   ├── clientes.py       # Endpoints públicos de clientes
+│   │   ├── sacolas.py        # Endpoints públicos de sacolas
+│   │   ├── admin_lotes.py    # Gestão de lotes
+│   │   ├── admin_suspensao.py # Suspensão de clientes
+│   │   ├── admin_alertas.py  # Sistema de alertas
+│   │   ├── admin_relatorios.py # Dashboard e relatórios
+│   │   ├── admin_sacolas.py  # Gestão de sacolas
+│   │   └── admin_exportar.py # Exportação CSV
+│   ├── main.py               # Servidor principal (32 endpoints)
+│   ├── models.py             # Modelos do banco de dados
+│   ├── database.py           # Configuração SQLAlchemy
+│   ├── requirements.txt      # Dependências Python
+│   └── .env                  # Variáveis de ambiente (SECRET_KEY)
 ├── scripts/                   # Scripts utilitários
 │   ├── gerar_qrcodes.py      # Geração em massa de QR Codes
 │   ├── limpar_qrcodes.py     # Limpeza de QR Codes antigos
@@ -141,9 +165,9 @@ bagplus-loyalty-system/
 
 ---
 
-## API Endpoints
+## API Endpoints (32 total)
 
-### Clientes
+### Clientes (8 endpoints)
 
 #### Criar Cliente
 ```http
@@ -156,7 +180,19 @@ Query Parameters:
 #### Listar Clientes
 ```http
 GET /api/clientes
-Response: Lista de clientes com total de sacolas ativas
+Response: Lista de clientes com sacolas ativas e status
+```
+
+#### Buscar Cliente por Nome
+```http
+GET /api/clientes/buscar?nome=joão
+Response: Lista de clientes que correspondem ao termo (parcial, case-insensitive)
+```
+
+#### Validar CPF
+```http
+GET /api/clientes/{cpf}/validar
+Response: Verifica se cliente existe sem criar cadastro
 ```
 
 #### Listar Sacolas do Cliente
@@ -171,14 +207,32 @@ GET /api/clientes/{cpf}/estatisticas
 Response: Total gasto, valor médio, total de usos
 ```
 
+#### Histórico Completo do Cliente
+```http
+GET /api/clientes/{cpf}/historico-completo
+Response: Timeline completa com eventos, compras, alertas, suspensões
+```
+
+#### Excluir Cliente (Restritivo)
+```http
+DELETE /api/clientes/{cpf}
+Validações: Bloqueia se cliente tem histórico (sacolas/alertas)
+```
+
 ---
 
-### Sacolas
+### Sacolas (7 endpoints)
 
 #### Buscar Sacola
 ```http
 GET /api/sacolas/{sacola_id}
 Response: Informações completas, descontos, estado, fidelidade
+```
+
+#### Listar Sacolas Ativas
+```http
+GET /api/sacolas/ativas
+Response: Todas as sacolas em uso
 ```
 
 #### Ativar Sacola
@@ -223,9 +277,17 @@ GET /api/sacolas/{sacola_id}/historico
 Response: Histórico completo com valores, total gasto, valor médio
 ```
 
+#### Verificar QR Code
+```http
+POST /api/sacolas/verificar-qr
+Query Parameters:
+  - qr_code: string
+Response: Valida checksum sem ativar sacola
+```
+
 ---
 
-### Administração - Lote
+### Admin - Lotes (2 endpoints)
 
 #### Importar Lote
 ```http
@@ -240,12 +302,12 @@ Ação: Cria sacolas em status "estoque" com checksums
 #### Listar Lotes
 ```http
 GET /api/admin/lotes
-Response: Todos lotes importados com intervalo de IDs
+Response: Todos lotes com distribuição (estoque/ativas/devolvidas)
 ```
 
 ---
 
-### Administração - Suspensão
+### Admin - Clientes (3 endpoints)
 
 #### Suspender Cliente
 ```http
@@ -270,7 +332,7 @@ Response: Clientes suspensos ou bloqueados com motivos
 
 ---
 
-### Administração - Alertas
+### Admin - Alertas (2 endpoints)
 
 #### Listar Alertas
 ```http
@@ -288,6 +350,98 @@ POST /api/admin/alertas/{alerta_id}/resolver
 Query Parameters:
   - alerta_id: int
   - observacao: string (min 10 caracteres)
+```
+
+---
+
+### Admin - Relatórios (3 endpoints)
+
+#### Dashboard Administrativo
+```http
+GET /api/admin/relatorios/dashboard
+Response: Visão geral do negócio (totais, financeiro, alertas, top performers, crescimento)
+```
+
+#### Relatório de Vendas
+```http
+GET /api/admin/relatorios/vendas
+Query Parameters:
+  - data_inicio: string (YYYY-MM-DD)
+  - data_fim: string (YYYY-MM-DD)
+Response: Resumo geral, detalhamento diário, top performers do período
+```
+
+#### Estatísticas Gerais
+```http
+GET /api/admin/relatorios/estatisticas
+Response: Taxa devolução, tempo médio uso, recordes, performance financeira, crescimento
+```
+
+---
+
+### Admin - Sacolas (4 endpoints)
+
+#### Sacolas Próximas do Limite
+```http
+GET /api/admin/sacolas/proximo-limite?limite=35
+Response: Sacolas com 35+ usos (perto de expirar)
+```
+
+#### Consultar Estoque
+```http
+GET /api/admin/sacolas/estoque?lote_id=1
+Response: Sacolas disponíveis (nunca distribuídas)
+```
+
+#### Transferir Sacola
+```http
+POST /api/admin/sacolas/{sacola_id}/transferir
+Query Parameters:
+  - cpf_origem: string
+  - cpf_destino: string
+  - motivo: string (min 10 caracteres)
+Ação: Transfere propriedade preservando histórico
+```
+
+#### Resetar Contador
+```http
+POST /api/admin/sacolas/{sacola_id}/resetar-contador
+Query Parameters:
+  - motivo: string (min 15 caracteres)
+Ação: Reseta utilizações para 0 (operação sensível)
+```
+
+---
+
+### Admin - Exportação (3 endpoints)
+
+#### Exportar Clientes
+```http
+GET /api/admin/exportar/clientes
+Query Parameters (opcionais):
+  - status: string (ativo/suspenso/bloqueado)
+  - data_inicio: string (YYYY-MM-DD)
+  - data_fim: string (YYYY-MM-DD)
+Response: CSV com CPF, Nome, Status, Sacolas Ativas, Total Gasto
+```
+
+#### Exportar Sacolas
+```http
+GET /api/admin/exportar/sacolas
+Query Parameters (opcionais):
+  - status: string (estoque/ativo/devolvido)
+  - lote_id: int
+Response: CSV com ID, Status, Cliente, Utilizações, Estado, Lote
+```
+
+#### Exportar Usos
+```http
+GET /api/admin/exportar/usos
+Query Parameters (opcionais):
+  - data_inicio: string (YYYY-MM-DD)
+  - data_fim: string (YYYY-MM-DD)
+  - cpf: string
+Response: CSV com Data/Hora, Sacola, Cliente, Valor
 ```
 
 > **Documentação completa e interativa:** `http://localhost:8000/docs`
@@ -322,7 +476,7 @@ Query Parameters:
 - id (PK)
 - sacola_id (FK)
 - data_uso
-- valor_compra - FASE 3: obrigatório
+- valor_compra
 
 #### lotes
 - id (PK)
@@ -425,30 +579,14 @@ sacola_id: BAG-00001
 valor_compra: 125,50
 ```
 
-#### 6. Ver Histórico
+#### 6. Ver Dashboard
 ```http
-GET /api/sacolas/BAG-00001/historico
+GET /api/admin/relatorios/dashboard
 ```
 
-#### 7. Testar Alertas (Opcional)
-
-**Gerar alerta de valores diferentes:**
+#### 7. Exportar Dados
 ```http
-# Registrar 4 sacolas com valores diferentes
-POST /api/sacolas/registrar-uso
-sacola_id: BAG-00001, valor_compra: 45,00
-
-POST /api/sacolas/registrar-uso
-sacola_id: BAG-00002, valor_compra: 78,00
-
-POST /api/sacolas/registrar-uso
-sacola_id: BAG-00003, valor_compra: 35,00
-
-POST /api/sacolas/registrar-uso
-sacola_id: BAG-00004, valor_compra: 92,00
-
-# Ver alertas gerados
-GET /api/admin/alertas
+GET /api/admin/exportar/usos
 ```
 
 ---
@@ -492,6 +630,11 @@ ENVIRONMENT=development
    - Bloqueio permanente quando necessário
    - Registro de motivos e datas
 
+4. **Auditoria**
+   - Histórico completo de eventos
+   - Exportação de dados para análise
+   - Rastreamento de transferências e resets
+
 ---
 
 ## Suporte
@@ -519,9 +662,23 @@ pip install -r backend/requirements.txt
 
 ---
 
+## Roadmap
+
+### Próximas Funcionalidades
+- [ ] Interface web do caixa (HTML/CSS/JS)
+- [ ] Dashboard administrativo (React/Next.js)
+- [ ] Sistema de autenticação (JWT)
+- [ ] App mobile cliente (React Native)
+- [ ] Migração SQLite para PostgreSQL
+- [ ] Testes automatizados
+- [ ] Deploy em produção
+
+---
+
 ## Contato
 
-**Email:** jean06soares@gmail.com
+**Email:** jean06soares@gmail.com  
+**GitHub:** https://github.com/JeanAres/bagplus-loyalty-system
 
 ---
 
@@ -531,4 +688,4 @@ Este é um projeto comercial proprietário. O código está disponível para ava
 
 ---
 
-**Bag+** - Sua sacola vale mais. 🌱♻️
+**Bag+** - Sua sacola vale mais.🌱♻️
