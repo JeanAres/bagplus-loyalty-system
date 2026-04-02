@@ -480,6 +480,74 @@ def historico_completo_cliente(cpf: str, db: Session = Depends(get_db)):
         "timeline": timeline
     }
 
+@router.get(
+    "/{cpf}/validar",
+    summary="Validar se cliente existe",
+    description="""
+    Verifica se um cliente existe no sistema sem criar cadastro.
+    
+    **Funcionalidade:**
+    - Valida CPF rapidamente
+    - Retorna informações básicas se existir
+    - Útil antes de vincular sacolas
+    
+    **Informações retornadas:**
+    - existe: true/false
+    - Se existe:
+      - CPF e nome
+      - Status dos benefícios
+      - Quantidade de sacolas ativas
+      - Motivo de suspensão (se houver)
+    
+    **Quando usar:**
+    - Antes de ativar sacola (verificar se cliente existe)
+    - Validação rápida no caixa
+    - Verificar status antes de permitir uso
+    
+    **Parâmetro:**
+    - cpf: CPF do cliente (11 dígitos)
+    
+    **Exemplos:**
+```
+    GET /api/clientes/12345678900/validar
+```
+    
+    **Diferença de outros endpoints:**
+    - GET /api/clientes/{cpf}/sacolas → Retorna sacolas (erro se não existe)
+    - GET /api/clientes/{cpf}/validar → Só valida (não dá erro)
+    
+    **Observação:** 
+    - Não cria cliente se não existir
+    """
+)
+def validar_cliente(cpf: str, db: Session = Depends(get_db)):
+    """Valida se cliente existe sem criar cadastro"""
+    
+    cliente = db.query(models.Cliente).filter(models.Cliente.cpf == cpf).first()
+    
+    if not cliente:
+        return {
+            "existe": False,
+            "cpf": cpf
+        }
+    
+    # Contar sacolas ativas
+    sacolas_ativas = db.query(models.Sacola).filter(
+        models.Sacola.cliente_cpf == cpf,
+        models.Sacola.status == models.StatusSacola.ativo
+    ).count()
+    
+    return {
+        "existe": True,
+        "cliente": {
+            "cpf": cliente.cpf,
+            "nome": cliente.nome,
+            "status_beneficios": cliente.status_beneficios.value,
+            "sacolas_ativas": sacolas_ativas,
+            "suspenso": cliente.status_beneficios != models.StatusBeneficios.ativo,
+            "motivo_suspensao": cliente.motivo_suspensao if cliente.status_beneficios != models.StatusBeneficios.ativo else None
+        }
+    }
 
 @router.delete(
     "/{cpf}",

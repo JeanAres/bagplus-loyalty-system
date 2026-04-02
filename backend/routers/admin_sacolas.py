@@ -203,3 +203,256 @@ def listar_estoque(lote_id: int = None, db: Session = Depends(get_db)):
         "ids_disponiveis_amostra": ids_disponiveis,
         "observacao": "Amostra limitada a 100 IDs. Use filtro por lote para ver detalhes específicos." if len(sacolas) > 100 else None
     }
+
+@router.post(
+    "/{sacola_id}/transferir",
+    summary="Transferir sacola entre clientes",
+    description="""
+    Transfere uma sacola de um cliente para outro.
+    
+    **Casos de uso:**
+    - Cliente perdeu a sacola
+    - Cliente quer dar sacola para familiar
+    - Transferência de propriedade
+    - Correção de vinculação errada
+    
+    **Validações:**
+    - Sacola deve estar ativa
+    - Cliente origem deve ser o dono atual
+    - Cliente destino deve existir e estar ativo
+    - Motivo obrigatório (mínimo 10 caracteres)
+    - Cliente destino não pode estar suspenso
+    
+    **Parâmetros:**
+    - sacola_id: ID da sacola (ex: BAG-00001)
+    - cpf_origem: CPF do cliente atual (validação)
+    - cpf_destino: CPF do novo dono
+    - motivo: Motivo da transferência
+    
+    **Exemplo:**
+```json
+    {
+      "cpf_origem": "12345678900",
+      "cpf_destino": "99988877766",
+      "motivo": "Cliente perdeu a sacola e autorizou transferência para familiar"
+    }
+```
+    
+    **O que acontece:**
+    - Sacola muda de dono
+    - Utilizações e histórico são preservados
+    - Transferência é irreversível
+    
+    **Observação:** 
+    - Operação sensível - registre motivo detalhado
+    - Não é possível desfazer
+    - Cliente origem perde acesso à sacola
+    """
+)
+def transferir_sacola(
+    sacola_id: str,
+    cpf_origem: str,
+    cpf_destino: str,
+    motivo: str,
+    db: Session = Depends(get_db)
+):
+    """Transfere sacola de um cliente para outro"""
+    
+    # Validar motivo
+    if not motivo or len(motivo.strip()) < 10:
+        raise HTTPException(
+            status_code=400,
+            detail="Motivo deve ter pelo menos 10 caracteres"
+        )
+    
+    # Buscar sacola
+    sacola = db.query(models.Sacola).filter(models.Sacola.id == sacola_id).first()
+    if not sacola:
+        raise HTTPException(status_code=404, detail="Sacola não encontrada")
+    
+    # Verificar se sacola está ativa
+    if sacola.status != models.StatusSacola.ativo:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Sacola não está ativa. Status atual: {sacola.status.value}"
+        )
+    
+    # Validar cliente origem (deve ser o dono atual)
+    if sacola.cliente_cpf != cpf_origem:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cliente origem ({cpf_origem}) não é o dono atual da sacola. Dono atual: {sacola.cliente_cpf}"
+        )
+    
+    # Buscar cliente origem
+    cliente_origem = db.query(models.Cliente).filter(models.Cliente.cpf == cpf_origem).first()
+    if not cliente_origem:
+        raise HTTPException(status_code=404, detail=f"Cliente origem não encontrado: {cpf_origem}")
+    
+    # Buscar cliente destino
+    cliente_destino = db.query(models.Cliente).filter(models.Cliente.cpf == cpf_destino).first()
+    if not cliente_destino:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Cliente destino não encontrado: {cpf_destino}. Cadastre o cliente primeiro."
+        )
+    
+    # Verificar se cliente destino está ativo
+    if cliente_destino.status_beneficios != models.StatusBeneficios.ativo:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Cliente destino está suspenso/bloqueado. Não pode receber sacolas."
+        )
+    
+    # Verificar se não é o mesmo cliente
+    if cpf_origem == cpf_destino:
+        raise HTTPException(
+            status_code=400,
+            detail="Cliente origem e destino são o mesmo. Transferência não necessária."
+        )
+    
+    # Transferir sacola
+    sacola.cliente_cpf = cpf_destino
+    
+    db.commit()
+    db.refresh(sacola)
+    
+    return {
+        "sucesso": True,
+        "mensagem": "Sacola transferida com sucesso",
+        "transferencia": {
+            "sacola_id": sacola_id,
+            "de": {
+                "cpf": cpf_origem,
+                "nome": cliente_origem.nome
+            },
+            "para": {
+                "cpf": cpf_destino,
+                "nome": cliente_destino.nome
+            },
+            "motivo": motivo.strip(),
+            "data_transferencia": datetime.now(),
+            "utilizacoes_atual": sacola.utilizacoes
+        },
+        "observacao": "Transferência irreversível. Histórico de uso foi preservado."
+    }
+
+
+@router.post(
+    "/{sacola_id}/resetar-contador",
+    summary="Resetar contador de usos (Admin)",
+    description="""
+    Reseta o contador de utilizações de uma sacola para zero.
+    
+    **OPERAÇÃO SENSÍVEL - USE COM CAUTELA**
+    
+    **Casos de uso válidos:**
+    - Erro de lançamento (registrou uso duplicado)
+    - Falha no sistema (contador descontrolado)
+    - Correção de dados após migração
+    - Testes em ambiente de desenvolvimento
+    
+    **Casos INVÁLIDOS:**
+    - Dar "nova chance" para cliente
+    - Burlar limite de 40 usos
+    - Favorecer clientes específicos
+    
+    **Validações:**
+    - Sacola deve estar ativa
+    - Motivo obrigatório (mínimo 15 caracteres)
+    - Operação irreversível
+    - Não deleta histórico de uso
+    
+    **Parâmetros:**
+    - sacola_id: ID da sacola (ex: BAG-00001)
+    - motivo: Motivo detalhado do reset
+    
+    **Exemplo:**
+```json
+    {
+      "motivo": "Erro de sistema registrou 10 usos duplicados. Resetando para recalcular corretamente."
+    }
+```
+    
+    **O que acontece:**
+    - Contador de utilizações → 0
+    - Histórico de uso preservado
+    - Sacola volta a aceitar 40 usos
+    
+    **O que NÃO acontece:**
+    - Registros de uso NÃO são deletados
+    - Data de vinculação permanece
+    - Estado da sacola não muda
+    
+    **Observação:** 
+    - Operação MUITO sensível
+    - Registre motivo MUITO detalhado
+    - Irreversível - não há como desfazer
+    - Use apenas para correções legítimas
+    """
+)
+def resetar_contador(
+    sacola_id: str,
+    motivo: str,
+    db: Session = Depends(get_db)
+):
+    """Reseta contador de utilizações (operação sensível)"""
+    
+    # Validar motivo (mais rigoroso)
+    if not motivo or len(motivo.strip()) < 15:
+        raise HTTPException(
+            status_code=400,
+            detail="Motivo deve ter pelo menos 15 caracteres. Esta é uma operação sensível."
+        )
+    
+    # Buscar sacola
+    sacola = db.query(models.Sacola).filter(models.Sacola.id == sacola_id).first()
+    if not sacola:
+        raise HTTPException(status_code=404, detail="Sacola não encontrada")
+    
+    # Verificar se sacola está ativa
+    if sacola.status != models.StatusSacola.ativo:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Sacola não está ativa. Status atual: {sacola.status.value}. Só é possível resetar sacolas ativas."
+        )
+    
+    # Buscar cliente
+    cliente = db.query(models.Cliente).filter(
+        models.Cliente.cpf == sacola.cliente_cpf
+    ).first()
+    
+    # Guardar valores antigos
+    utilizacoes_anterior = sacola.utilizacoes
+    
+    # Resetar contador
+    sacola.utilizacoes = 0
+    
+    db.commit()
+    db.refresh(sacola)
+    
+    # Contar registros de uso (para validação)
+    total_registros = db.query(models.RegistroUso).filter(
+        models.RegistroUso.sacola_id == sacola_id
+    ).count()
+    
+    return {
+        "sucesso": True,
+        "mensagem": "Contador de utilizações resetado",
+        "sacola": {
+            "id": sacola_id,
+            "cliente": {
+                "cpf": sacola.cliente_cpf,
+                "nome": cliente.nome if cliente else "Desconhecido"
+            },
+            "utilizacoes_anterior": utilizacoes_anterior,
+            "utilizacoes_atual": sacola.utilizacoes,
+            "registros_historico_preservados": total_registros
+        },
+        "operacao": {
+            "motivo": motivo.strip(),
+            "data": datetime.now(),
+            "irreversivel": True
+        },
+        "aviso": "Histórico de uso foi preservado. Apenas o contador foi resetado."
+    }
