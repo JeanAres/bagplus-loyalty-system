@@ -213,3 +213,177 @@ def listar_lotes(db: Session = Depends(get_db)):
         "total_lotes": len(lotes_data),
         "lotes": lotes_data
     }
+
+@router.get(
+    "/{lote_id}/estatisticas",
+    summary="Estatísticas de performance do lote",
+    description="""
+    Retorna análise completa de performance de um lote específico.
+    
+    **Informações retornadas:**
+    
+    ** Distribuição:**
+    - Total de sacolas no lote
+    - Quantidade em estoque (nunca distribuídas)
+    - Quantidade ativas (em uso)
+    - Quantidade devolvidas
+    - Taxa de ativação (% distribuídas)
+    - Taxa de devolução (% devolvidas)
+    
+    ** Tempo de Uso:**
+    - Tempo médio de uso (dias)
+    - Baseado em sacolas devolvidas do lote
+    
+    ** Performance Financeira:**
+    - Valor total movimentado pelo lote
+    - Valor médio por sacola
+    - Total de usos realizados
+    
+    ** Top Performers:**
+    - Top 5 sacolas mais usadas do lote
+    - Com cliente associado e utilizações
+    
+    **Quando usar:**
+    - Comparar qualidade entre lotes
+    - Identificar lotes problemáticos
+    - Decisões de compra (qual fornecedor/data)
+    - Análise de ciclo de vida
+    
+    **Parâmetro:**
+    - lote_id: ID do lote (número inteiro)
+    
+    **Observação:** 
+    - Lote deve existir no sistema
+    - Cálculos baseados em dados reais
+    """
+)
+def estatisticas_lote(lote_id: int, db: Session = Depends(get_db)):
+    """Retorna estatísticas completas de um lote"""
+    
+    # Buscar lote
+    lote = db.query(models.Lote).filter(models.Lote.id == lote_id).first()
+    if not lote:
+        raise HTTPException(status_code=404, detail=f"Lote {lote_id} não encontrado")
+    
+    # Buscar todas sacolas do lote
+    sacolas = db.query(models.Sacola).filter(models.Sacola.lote_id == lote_id).all()
+    
+    if not sacolas:
+        return {
+            "lote": {
+                "id": lote_id,
+                "data_fabricacao": lote.data_fabricacao,
+                "data_importacao": lote.data_importacao,
+                "quantidade_total": 0
+            },
+            "distribuicao": {
+                "estoque": 0,
+                "ativas": 0,
+                "devolvidas": 0,
+                "taxa_ativacao": 0,
+                "taxa_devolucao": 0
+            },
+            "tempo_uso": {
+                "medio_dias": 0,
+                "baseado_em": 0
+            },
+            "performance_financeira": {
+                "valor_total_movimentado": 0,
+                "valor_medio_por_sacola": 0,
+                "total_usos": 0
+            },
+            "top_sacolas": []
+        }
+    
+    # ========== DISTRIBUIÇÃO ==========
+    total_sacolas = len(sacolas)
+    
+    estoque = len([s for s in sacolas if s.status == models.StatusSacola.estoque])
+    ativas = len([s for s in sacolas if s.status == models.StatusSacola.ativo])
+    devolvidas = len([s for s in sacolas if s.status == models.StatusSacola.devolvido])
+    
+    distribuidas = ativas + devolvidas
+    taxa_ativacao = (distribuidas / total_sacolas * 100) if total_sacolas > 0 else 0
+    taxa_devolucao = (devolvidas / distribuidas * 100) if distribuidas > 0 else 0
+    
+    # ========== TEMPO DE USO ==========
+    sacolas_devolvidas = [s for s in sacolas if s.status == models.StatusSacola.devolvido 
+                          and s.data_vinculacao and s.data_devolucao]
+    
+    if sacolas_devolvidas:
+        tempos_uso = []
+        for s in sacolas_devolvidas:
+            dias = (s.data_devolucao - s.data_vinculacao).days
+            tempos_uso.append(dias)
+        tempo_medio_dias = sum(tempos_uso) / len(tempos_uso)
+    else:
+        tempo_medio_dias = 0
+    
+    # ========== PERFORMANCE FINANCEIRA ==========
+    valor_total = 0
+    total_usos = 0
+    
+    for sacola in sacolas:
+        registros = db.query(models.RegistroUso).filter(
+            models.RegistroUso.sacola_id == sacola.id
+        ).all()
+        
+        valor_total += sum(r.valor_compra for r in registros)
+        total_usos += len(registros)
+    
+    valor_medio_por_sacola = valor_total / distribuidas if distribuidas > 0 else 0
+    
+    # ========== TOP PERFORMERS ==========
+    sacolas_ordenadas = sorted(sacolas, key=lambda s: s.utilizacoes, reverse=True)
+    top_5 = sacolas_ordenadas[:5]
+    
+    top_sacolas = []
+    for sacola in top_5:
+        if sacola.utilizacoes > 0:
+            cliente = None
+            if sacola.cliente_cpf:
+                cliente = db.query(models.Cliente).filter(
+                    models.Cliente.cpf == sacola.cliente_cpf
+                ).first()
+            
+            top_sacolas.append({
+                "sacola_id": sacola.id,
+                "utilizacoes": sacola.utilizacoes,
+                "status": sacola.status.value,
+                "cliente": {
+                    "cpf": sacola.cliente_cpf,
+                    "nome": cliente.nome if cliente else "Desconhecido"
+                } if sacola.cliente_cpf else None
+            })
+    
+    # ========== MONTAR RESPONSE ==========
+    return {
+        "lote": {
+            "id": lote_id,
+            "data_fabricacao": lote.data_fabricacao,
+            "data_importacao": lote.data_importacao,
+            "quantidade_total": total_sacolas,
+            "range_ids": f"{lote.inicio} - {lote.fim}"
+        },
+        
+        "distribuicao": {
+            "estoque": estoque,
+            "ativas": ativas,
+            "devolvidas": devolvidas,
+            "taxa_ativacao": round(taxa_ativacao, 2),
+            "taxa_devolucao": round(taxa_devolucao, 2)
+        },
+        
+        "tempo_uso": {
+            "medio_dias": round(tempo_medio_dias, 1),
+            "baseado_em": len(sacolas_devolvidas)
+        },
+        
+        "performance_financeira": {
+            "valor_total_movimentado": round(valor_total, 2),
+            "valor_medio_por_sacola": round(valor_medio_por_sacola, 2),
+            "total_usos": total_usos
+        },
+        
+        "top_sacolas": top_sacolas
+    }

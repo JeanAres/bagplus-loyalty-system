@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from datetime import datetime, timedelta
 import models
+from dateutil.relativedelta import relativedelta
 
 router = APIRouter(
     prefix="/api/admin/relatorios",
@@ -620,5 +621,154 @@ def estatisticas_gerais(db: Session = Depends(get_db)):
             "total_clientes": total_clientes,
             "novos_esta_semana": novos_clientes_semana,
             "novos_este_mes": novos_clientes_mes
+        }
+    }
+
+@router.get(
+    "/crescimento",
+    summary="Análise de crescimento do negócio",
+    description="""
+    Retorna análise de crescimento mês a mês (últimos 6 meses).
+    
+    **Informações retornadas:**
+    
+    ** Por Mês (últimos 6 meses):**
+    - Ano/Mês
+    - Novos clientes cadastrados
+    - Sacolas ativadas (vinculadas)
+    - Valor movimentado no mês
+    - Total de usos no mês
+    
+    ** Resumo Geral:**
+    - Total de novos clientes (6 meses)
+    - Total de sacolas ativadas (6 meses)
+    - Valor total movimentado (6 meses)
+    - Crescimento percentual mês a mês
+    
+    ** Insights:**
+    - Mês com mais clientes
+    - Mês com mais faturamento
+    - Tendência de crescimento
+    
+    **Quando usar:**
+    - Projeções de crescimento
+    - Relatórios para investidores
+    - Planejamento de compras
+    - Análise de sazonalidade
+    
+    **Observação:** 
+    - Considera mês atual e 5 anteriores
+    - Dados ordenados do mais antigo para o mais recente
+    """
+)
+def analise_crescimento(db: Session = Depends(get_db)):
+    """Retorna análise de crescimento dos últimos 6 meses"""
+    
+    from collections import defaultdict
+    from dateutil.relativedelta import relativedelta
+    
+    hoje = datetime.now()
+    
+    # Calcular início (6 meses atrás)
+    inicio = hoje - relativedelta(months=5)
+    inicio = inicio.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    
+    # ========== COLETAR DADOS POR MÊS ==========
+    meses = []
+    mes_atual = inicio
+    
+    for i in range(6):
+        # Calcular range do mês
+        mes_inicio = mes_atual
+        mes_fim = mes_atual + relativedelta(months=1) - timedelta(seconds=1)
+        
+        # Novos clientes
+        novos_clientes = db.query(models.Cliente).filter(
+            models.Cliente.data_cadastro >= mes_inicio,
+            models.Cliente.data_cadastro <= mes_fim
+        ).count()
+        
+        # Sacolas ativadas
+        sacolas_ativadas = db.query(models.Sacola).filter(
+            models.Sacola.data_vinculacao >= mes_inicio,
+            models.Sacola.data_vinculacao <= mes_fim
+        ).count()
+        
+        # Usos e valor movimentado
+        usos = db.query(models.RegistroUso).filter(
+            models.RegistroUso.data_uso >= mes_inicio,
+            models.RegistroUso.data_uso <= mes_fim
+        ).all()
+        
+        total_usos = len(usos)
+        valor_movimentado = sum(u.valor_compra for u in usos)
+        
+        meses.append({
+            "mes": mes_atual.strftime('%Y-%m'),
+            "mes_nome": mes_atual.strftime('%B/%Y'),
+            "novos_clientes": novos_clientes,
+            "sacolas_ativadas": sacolas_ativadas,
+            "valor_movimentado": round(valor_movimentado, 2),
+            "total_usos": total_usos
+        })
+        
+        # Próximo mês
+        mes_atual = mes_atual + relativedelta(months=1)
+    
+    # ========== RESUMO GERAL ==========
+    total_novos_clientes = sum(m['novos_clientes'] for m in meses)
+    total_sacolas_ativadas = sum(m['sacolas_ativadas'] for m in meses)
+    total_valor = sum(m['valor_movimentado'] for m in meses)
+    total_usos_periodo = sum(m['total_usos'] for m in meses)
+    
+    # ========== INSIGHTS ==========
+    mes_mais_clientes = max(meses, key=lambda m: m['novos_clientes']) if meses else None
+    mes_mais_faturamento = max(meses, key=lambda m: m['valor_movimentado']) if meses else None
+    
+    # Calcular tendência (crescimento do último mês vs primeiro)
+    if len(meses) >= 2:
+        valor_primeiro = meses[0]['valor_movimentado']
+        valor_ultimo = meses[-1]['valor_movimentado']
+        
+        if valor_primeiro > 0:
+            crescimento_percentual = ((valor_ultimo - valor_primeiro) / valor_primeiro) * 100
+        else:
+            crescimento_percentual = 0
+    else:
+        crescimento_percentual = 0
+    
+    # ========== MONTAR RESPONSE ==========
+    return {
+        "periodo": {
+            "inicio": inicio.strftime('%Y-%m-%d'),
+            "fim": hoje.strftime('%Y-%m-%d'),
+            "meses_analisados": len(meses)
+        },
+        
+        "evolucao_mensal": meses,
+        
+        "resumo": {
+            "total_novos_clientes": total_novos_clientes,
+            "total_sacolas_ativadas": total_sacolas_ativadas,
+            "valor_total_movimentado": round(total_valor, 2),
+            "total_usos": total_usos_periodo,
+            "media_mensal": {
+                "clientes": round(total_novos_clientes / 6, 1),
+                "sacolas": round(total_sacolas_ativadas / 6, 1),
+                "valor": round(total_valor / 6, 2)
+            }
+        },
+        
+        "insights": {
+            "mes_mais_clientes": {
+                "mes": mes_mais_clientes['mes_nome'] if mes_mais_clientes else None,
+                "quantidade": mes_mais_clientes['novos_clientes'] if mes_mais_clientes else 0
+            },
+            "mes_mais_faturamento": {
+                "mes": mes_mais_faturamento['mes_nome'] if mes_mais_faturamento else None,
+                "valor": mes_mais_faturamento['valor_movimentado'] if mes_mais_faturamento else 0
+            },
+            "tendencia": "Crescimento" if crescimento_percentual > 0 else "Queda" if crescimento_percentual < 0 else "Estável",
+            "crescimento_percentual": round(crescimento_percentual, 2)
         }
     }

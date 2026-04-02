@@ -456,3 +456,189 @@ def resetar_contador(
         },
         "aviso": "Histórico de uso foi preservado. Apenas o contador foi resetado."
     }
+
+@router.get(
+    "/em-risco",
+    summary="Identificar sacolas em risco",
+    description="""
+    Lista sacolas com padrões problemáticos que requerem atenção.
+    
+    **Padrões detectados:**
+    
+    ** Sem Uso Prolongado:**
+    - Sacolas ativas sem uso há mais de 30 dias
+    - Motivo: Cliente pode ter esquecido, perdido ou abandonado
+    - Ação sugerida: Contato para verificar status
+    
+    ** Uso Intenso:**
+    - Sacolas com 20+ usos em menos de 30 dias
+    - Motivo: Uso comercial não autorizado ou compartilhamento
+    - Ação sugerida: Investigar padrão de uso
+    
+    ** Múltiplas Próximas do Limite:**
+    - Clientes com 3+ sacolas acima de 30 usos
+    - Motivo: Acúmulo excessivo sem devolução
+    - Ação sugerida: Incentivar devolução
+    
+    **Informações retornadas para cada categoria:**
+    - Sacola ID
+    - Cliente (CPF e nome)
+    - Utilizações atuais
+    - Dias desde último uso ou dias de posse
+    - Motivo do risco
+    - Gravidade (baixa/média/alta)
+    
+    **Quando usar:**
+    - Rotina diária de gestão
+    - Contato proativo com clientes
+    - Prevenir perdas de sacolas
+    - Identificar padrões suspeitos
+    - Gestão de relacionamento
+    
+    **Observação:** 
+    - Apenas sacolas ativas
+    - Ordenado por gravidade (alta → baixa)
+    """
+)
+def sacolas_em_risco(db: Session = Depends(get_db)):
+    """Identifica sacolas com padrões problemáticos"""
+    
+    # Buscar todas sacolas ativas
+    sacolas_ativas = db.query(models.Sacola).filter(
+        models.Sacola.status == models.StatusSacola.ativo
+    ).all()
+    
+    # ========== CATEGORIAS DE RISCO ==========
+    sem_uso_prolongado = []
+    uso_intenso = []
+    multiplas_proximo_limite = []
+    
+    hoje = datetime.now()
+    
+    # ========== ANALISAR CADA SACOLA ==========
+    for sacola in sacolas_ativas:
+        # Buscar cliente
+        cliente = None
+        if sacola.cliente_cpf:
+            cliente = db.query(models.Cliente).filter(
+                models.Cliente.cpf == sacola.cliente_cpf
+            ).first()
+        
+        # ========== 1. SEM USO PROLONGADO ==========
+        if sacola.ultima_utilizacao:
+            dias_sem_uso = (hoje - sacola.ultima_utilizacao).days
+            
+            if dias_sem_uso > 30:
+                sem_uso_prolongado.append({
+                    "sacola_id": sacola.id,
+                    "cliente": {
+                        "cpf": sacola.cliente_cpf,
+                        "nome": cliente.nome if cliente else "Desconhecido"
+                    } if sacola.cliente_cpf else None,
+                    "utilizacoes": sacola.utilizacoes,
+                    "dias_sem_uso": dias_sem_uso,
+                    "ultimo_uso": sacola.ultima_utilizacao,
+                    "gravidade": "alta" if dias_sem_uso > 60 else "média",
+                    "motivo": f"Sem uso há {dias_sem_uso} dias (possível perda ou abandono)"
+                })
+        
+        # ========== 2. USO INTENSO ==========
+        if sacola.data_vinculacao:
+            dias_posse = (hoje - sacola.data_vinculacao).days
+            
+            # Se tem 20+ usos em menos de 30 dias
+            if dias_posse < 30 and sacola.utilizacoes >= 20:
+                uso_intenso.append({
+                    "sacola_id": sacola.id,
+                    "cliente": {
+                        "cpf": sacola.cliente_cpf,
+                        "nome": cliente.nome if cliente else "Desconhecido"
+                    } if sacola.cliente_cpf else None,
+                    "utilizacoes": sacola.utilizacoes,
+                    "dias_posse": dias_posse,
+                    "media_usos_dia": round(sacola.utilizacoes / dias_posse, 1) if dias_posse > 0 else 0,
+                    "gravidade": "alta",
+                    "motivo": f"{sacola.utilizacoes} usos em apenas {dias_posse} dias (uso comercial ou compartilhamento?)"
+                })
+    
+    # ========== 3. MÚLTIPLAS PRÓXIMAS DO LIMITE ==========
+    # Agrupar sacolas por cliente
+    from collections import defaultdict
+    sacolas_por_cliente = defaultdict(list)
+    
+    for sacola in sacolas_ativas:
+        if sacola.cliente_cpf and sacola.utilizacoes >= 30:
+            sacolas_por_cliente[sacola.cliente_cpf].append(sacola)
+    
+    # Clientes com 3+ sacolas acima de 30 usos
+    for cpf, sacolas_cliente in sacolas_por_cliente.items():
+        if len(sacolas_cliente) >= 3:
+            cliente = db.query(models.Cliente).filter(models.Cliente.cpf == cpf).first()
+            
+            multiplas_proximo_limite.append({
+                "cliente": {
+                    "cpf": cpf,
+                    "nome": cliente.nome if cliente else "Desconhecido"
+                },
+                "quantidade_sacolas": len(sacolas_cliente),
+                "sacolas": [
+                    {
+                        "id": s.id,
+                        "utilizacoes": s.utilizacoes,
+                        "usos_restantes": 40 - s.utilizacoes
+                    } for s in sorted(sacolas_cliente, key=lambda x: x.utilizacoes, reverse=True)
+                ],
+                "gravidade": "média",
+                "motivo": f"Cliente possui {len(sacolas_cliente)} sacolas com 30+ usos (acúmulo sem devolução)"
+            })
+    
+    # ========== ESTATÍSTICAS ==========
+    total_riscos = len(sem_uso_prolongado) + len(uso_intenso) + len(multiplas_proximo_limite)
+    
+    riscos_alta = (
+        len([s for s in sem_uso_prolongado if s['gravidade'] == 'alta']) +
+        len([s for s in uso_intenso if s['gravidade'] == 'alta'])
+    )
+    
+    riscos_media = (
+        len([s for s in sem_uso_prolongado if s['gravidade'] == 'média']) +
+        len(multiplas_proximo_limite)
+    )
+    
+    # ========== MONTAR RESPONSE ==========
+    return {
+        "timestamp": hoje,
+        "total_sacolas_ativas": len(sacolas_ativas),
+        "total_riscos_detectados": total_riscos,
+        
+        "resumo_gravidade": {
+            "alta": riscos_alta,
+            "media": riscos_media
+        },
+        
+        "categorias": {
+            "sem_uso_prolongado": {
+                "total": len(sem_uso_prolongado),
+                "descricao": "Sacolas sem uso há mais de 30 dias",
+                "sacolas": sorted(sem_uso_prolongado, key=lambda x: x['dias_sem_uso'], reverse=True)
+            },
+            
+            "uso_intenso": {
+                "total": len(uso_intenso),
+                "descricao": "Sacolas com 20+ usos em menos de 30 dias",
+                "sacolas": sorted(uso_intenso, key=lambda x: x['utilizacoes'], reverse=True)
+            },
+            
+            "multiplas_proximo_limite": {
+                "total": len(multiplas_proximo_limite),
+                "descricao": "Clientes com 3+ sacolas acima de 30 usos",
+                "casos": sorted(multiplas_proximo_limite, key=lambda x: x['quantidade_sacolas'], reverse=True)
+            }
+        },
+        
+        "acoes_sugeridas": {
+            "sem_uso_prolongado": "Contatar cliente para verificar status da sacola",
+            "uso_intenso": "Investigar padrão de uso (possível uso comercial)",
+            "multiplas_proximo_limite": "Incentivar devolução antes de expirar"
+        }
+    }
