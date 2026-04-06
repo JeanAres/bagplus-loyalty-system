@@ -32,27 +32,31 @@ def criar_admin_padrao():
     dev_password = os.getenv("DEV_ADMIN_PASSWORD")
     
     if not dev_username or not dev_password:
-        print("AVISO: DEV_ADMIN_USERNAME e DEV_ADMIN_PASSWORD não configurados no .env")
+        print("\nAVISO: DEV_ADMIN_USERNAME e DEV_ADMIN_PASSWORD não configurados no .env")
+        print("Configure estas variáveis para criar usuário admin de desenvolvimento\n")
         return None
     
     db = SessionLocal()
     
     try:
+        # Verificar se admin já existe
         admin = db.query(models.Usuario).filter(
             models.Usuario.username == dev_username
         ).first()
         
         if not admin:
+            # Criar admin padrão
             admin = models.Usuario(
                 username=dev_username,
                 password_hash=hash_password(dev_password),
                 nome="Administrador de Desenvolvimento",
-                role=models.RoleUsuario.admin,
+                role="admin",
                 ativo=True
             )
             db.add(admin)
             db.commit()
             db.refresh(admin)
+            print(f"Usuário admin '{dev_username}' criado com sucesso!")
         
         return admin
         
@@ -64,7 +68,7 @@ app = FastAPI(
     title="Bag+ API",
     version="1.0.0",
     description="""
-    Sistema de gerenciamento de sacolas reutilizáveis com programa de fidelidade.
+    Sistema de gerenciamento de sacolas reutilizáveis com programa de fidelidade e autenticação JWT.
     
     ## Módulos Públicos (15 endpoints)
     
@@ -74,27 +78,36 @@ app = FastAPI(
     **Sacolas (7):** Ativação, registro de uso, devolução, consulta, listagem, 
     histórico de uso, verificação de QR Code.
     
-    ## Módulos Administrativos (17 endpoints)
+    ## Autenticação (3 endpoints)
     
-    **Lotes (2):** Importação de lotes, listagem com distribuição por status.
+    **Auth:** Login com JWT, informações do usuário logado, token de desenvolvimento.
     
-    **Clientes (3):** Suspensão, reativação, listagem de clientes suspensos/bloqueados.
+    ## Módulos Administrativos (27 endpoints - REQUER AUTENTICAÇÃO)
     
-    **Alertas (2):** Listagem de alertas detectados, resolução com observações.
+    **Lotes (3):** Importação, listagem, estatísticas por lote.
     
-    **Relatórios (3):** Dashboard geral, relatório de vendas por período, estatísticas consolidadas.
+    **Clientes (3):** Suspensão, reativação, listagem de suspensos.
     
-    **Sacolas (4):** Sacolas próximas do limite, consulta de estoque, transferência entre clientes, 
-    reset de contador.
+    **Alertas (2):** Listagem de alertas, resolução.
     
-    **Exportação (3):** Exportar clientes, sacolas e registros de uso para CSV.
+    **Relatórios (4):** Dashboard, vendas por período, estatísticas gerais, análise de crescimento.
+    
+    **Sacolas (6):** Próximas do limite, consulta de estoque, transferência, reset de contador, 
+    identificação de riscos.
+    
+    **Exportação (3):** Exportar clientes, sacolas e usos para CSV.
+    
+    **Usuários (5):** Criar, listar, buscar, editar, desativar usuários.
+    
+    **Auditoria (1):** Consultar logs de ações administrativas.
     
     ## Segurança
     
+    Autenticação JWT com tokens de 24h, sistema de roles (admin/gerente/caixa), 
     QR Codes com checksum SHA256, validação de intervalo mínimo entre usos (4h), 
-    detecção automática de fraudes, sistema de suspensão, limite de 40 usos por sacola.
+    detecção automática de fraudes, logs de auditoria.
     
-    ## Total: 32 endpoints funcionais
+    ## Total: 45 endpoints funcionais
     
     Suporte: jean06soares@gmail.com
     """,
@@ -120,6 +133,7 @@ app.add_middleware(
 # Incluir routers
 app.include_router(clientes.router)
 app.include_router(sacolas.router)
+app.include_router(auth.router)
 app.include_router(lotes.router)
 app.include_router(suspensao.router)
 app.include_router(alertas.router)
@@ -141,7 +155,7 @@ def read_root():
         "api": "Bag+ - Sistema de Fidelização Sustentável",
         "version": "1.0.0",
         "status": "online",
-        "endpoints": 32,
+        "endpoints": 45,
         "docs": "/docs",
         "message": "Sua sacola vale mais."
     }
@@ -156,6 +170,10 @@ if __name__ == "__main__":
         admin = criar_admin_padrao()
         
         if admin:
+            # Pegar credenciais do .env
+            dev_username = os.getenv("DEV_ADMIN_USERNAME")
+            dev_password = os.getenv("DEV_ADMIN_PASSWORD")
+            
             # Gerar token de desenvolvimento
             token = create_access_token(
                 data={
@@ -176,8 +194,8 @@ if __name__ == "__main__":
             print("4. Clique em 'Authorize'")
             print("5. Pronto! Agora pode usar endpoints protegidos\n")
             print(f"Credenciais de login (alternativa):")
-            print(f"  Username: dev_admin")
-            print(f"  Password: admin123\n")
+            print(f"  Username: {dev_username}")
+            print(f"  Password: {dev_password}\n")
             print("Válido por: 24 horas")
             print("=" * 80 + "\n")
     
