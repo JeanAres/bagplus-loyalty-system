@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from datetime import datetime
 import models
+from middleware.auth import require_role
 
 router = APIRouter(
     prefix="/api/admin/sacolas",
@@ -57,7 +58,11 @@ router = APIRouter(
     - Limite máximo é 40 usos
     """
 )
-def sacolas_proximo_limite(limite: int = 35, db: Session = Depends(get_db)):
+def sacolas_proximo_limite(
+    limite: int = 35, 
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
+):
     """Lista sacolas próximas do limite de 40 usos"""
     
     # Validar limite
@@ -154,7 +159,11 @@ def sacolas_proximo_limite(limite: int = 35, db: Session = Depends(get_db)):
     - Ordenado por ID da sacola
     """
 )
-def listar_estoque(lote_id: int = None, db: Session = Depends(get_db)):
+def listar_estoque(
+    lote_id: int = None, 
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
+):
     """Lista sacolas disponíveis em estoque"""
     
     # Query base
@@ -254,7 +263,8 @@ def transferir_sacola(
     cpf_origem: str,
     cpf_destino: str,
     motivo: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_role(["admin"]))
 ):
     """Transfere sacola de um cliente para outro"""
     
@@ -394,7 +404,8 @@ def transferir_sacola(
 def resetar_contador(
     sacola_id: str,
     motivo: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_role(["admin"]))
 ):
     """Reseta contador de utilizações (operação sensível)"""
     
@@ -500,7 +511,10 @@ def resetar_contador(
     - Ordenado por gravidade (alta → baixa)
     """
 )
-def sacolas_em_risco(db: Session = Depends(get_db)):
+def sacolas_em_risco(
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
+):
     """Identifica sacolas com padrões problemáticos"""
     
     # Buscar todas sacolas ativas

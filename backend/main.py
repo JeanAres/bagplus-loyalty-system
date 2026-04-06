@@ -8,10 +8,56 @@ from database import engine
 import models
 
 # Importar routers
-from routers import clientes, sacolas, admin_lotes, admin_suspensao, admin_alertas, admin_relatorios, admin_sacolas, admin_exportar
+from routers import clientes, sacolas, auth
+from routers.admin import lotes, suspensao, alertas, relatorios, sacolas as admin_sacolas, exportar, usuarios, auditoria
+
+# Importar utilitários de autenticação
+from utils.security import hash_password, create_access_token
+import os
 
 # Criar tabelas
 models.Base.metadata.create_all(bind=engine)
+
+def criar_admin_padrao():
+    """Cria usuário admin padrão se não existir (apenas em desenvolvimento)"""
+    from database import SessionLocal
+    
+    environment = os.getenv("ENVIRONMENT", "development")
+    
+    if environment != "development":
+        return None
+    
+    # Pegar credenciais do .env
+    dev_username = os.getenv("DEV_ADMIN_USERNAME")
+    dev_password = os.getenv("DEV_ADMIN_PASSWORD")
+    
+    if not dev_username or not dev_password:
+        print("AVISO: DEV_ADMIN_USERNAME e DEV_ADMIN_PASSWORD não configurados no .env")
+        return None
+    
+    db = SessionLocal()
+    
+    try:
+        admin = db.query(models.Usuario).filter(
+            models.Usuario.username == dev_username
+        ).first()
+        
+        if not admin:
+            admin = models.Usuario(
+                username=dev_username,
+                password_hash=hash_password(dev_password),
+                nome="Administrador de Desenvolvimento",
+                role=models.RoleUsuario.admin,
+                ativo=True
+            )
+            db.add(admin)
+            db.commit()
+            db.refresh(admin)
+        
+        return admin
+        
+    finally:
+        db.close()
 
 # Configurar aplicação
 app = FastAPI(
@@ -74,12 +120,14 @@ app.add_middleware(
 # Incluir routers
 app.include_router(clientes.router)
 app.include_router(sacolas.router)
-app.include_router(admin_lotes.router)
-app.include_router(admin_suspensao.router)
-app.include_router(admin_alertas.router)
-app.include_router(admin_relatorios.router)
+app.include_router(lotes.router)
+app.include_router(suspensao.router)
+app.include_router(alertas.router)
+app.include_router(relatorios.router)
 app.include_router(admin_sacolas.router)
-app.include_router(admin_exportar.router)
+app.include_router(exportar.router)
+app.include_router(usuarios.router)
+app.include_router(auditoria.router)
 
 @app.get(
     "/",
@@ -100,4 +148,37 @@ def read_root():
 
 if __name__ == "__main__":
     import uvicorn
+    
+    # Criar admin padrão e exibir token de desenvolvimento
+    environment = os.getenv("ENVIRONMENT", "development")
+    
+    if environment == "development":
+        admin = criar_admin_padrao()
+        
+        if admin:
+            # Gerar token de desenvolvimento
+            token = create_access_token(
+                data={
+                    "sub": admin.username,
+                    "role": admin.role
+                }
+            )
+            
+            # Exibir no console
+            print("\n" + "=" * 80)
+            print("TOKEN DE DESENVOLVIMENTO")
+            print("=" * 80)
+            print(f"\nBearer {token}\n")
+            print("Como usar no Swagger:")
+            print("1. Abra http://localhost:8000/docs")
+            print("2. Clique no botão 'Authorize' (cadeado)")
+            print("3. Cole o token acima (com 'Bearer')")
+            print("4. Clique em 'Authorize'")
+            print("5. Pronto! Agora pode usar endpoints protegidos\n")
+            print(f"Credenciais de login (alternativa):")
+            print(f"  Username: dev_admin")
+            print(f"  Password: admin123\n")
+            print("Válido por: 24 horas")
+            print("=" * 80 + "\n")
+    
     uvicorn.run(app, host="0.0.0.0", port=8000)

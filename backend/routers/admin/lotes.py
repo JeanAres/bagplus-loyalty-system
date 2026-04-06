@@ -4,6 +4,7 @@ Endpoints administrativos - Gerenciamento de lotes
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
+from middleware.auth import require_role
 from datetime import datetime
 import models
 import os
@@ -51,7 +52,8 @@ def importar_lote_csv(
     data_fabricacao: str,
     inicio: int,
     fim: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
 ):
     """Importa lote de sacolas para o banco"""
     
@@ -173,7 +175,10 @@ def importar_lote_csv(
     **Observação:** Ordenado do mais recente para o mais antigo
     """
 )
-def listar_lotes(db: Session = Depends(get_db)):
+def listar_lotes(
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
+):
     """Lista todos os lotes importados"""
     
     lotes = db.query(models.Lote).order_by(models.Lote.data_importacao.desc()).all()
@@ -257,7 +262,11 @@ def listar_lotes(db: Session = Depends(get_db)):
     - Cálculos baseados em dados reais
     """
 )
-def estatisticas_lote(lote_id: int, db: Session = Depends(get_db)):
+def estatisticas_lote(
+    lote_id: int, 
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
+):
     """Retorna estatísticas completas de um lote"""
     
     # Buscar lote

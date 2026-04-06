@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from datetime import datetime
 import models
+from middleware.auth import require_role
 
 router = APIRouter(
     prefix="/api/admin/alertas",
@@ -55,7 +56,8 @@ def listar_alertas(
     resolvido: bool = None,
     gravidade: str = None,
     tipo: str = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
 ):
     """Lista alertas com filtros opcionais"""
     
@@ -158,7 +160,8 @@ def listar_alertas(
 def resolver_alerta(
     alerta_id: int,
     observacao: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
 ):
     """Marca alerta como resolvido"""
     

@@ -7,6 +7,7 @@ from database import get_db
 from datetime import datetime, timedelta
 import models
 from dateutil.relativedelta import relativedelta
+from middleware.auth import require_role
 
 router = APIRouter(
     prefix="/api/admin/relatorios",
@@ -58,7 +59,10 @@ router = APIRouter(
     **Performance:** Otimizado com queries agregadas, retorna em ~200ms
     """
 )
-def dashboard_admin(db: Session = Depends(get_db)):
+def dashboard_admin(
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
+):
     """Dashboard com visão geral do negócio"""
     
     # ========== TOTAIS GERAIS ==========
@@ -280,7 +284,8 @@ def dashboard_admin(db: Session = Depends(get_db)):
 def relatorio_vendas(
     data_inicio: str,
     data_fim: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
 ):
     """Gera relatório de vendas por período"""
     
@@ -468,7 +473,10 @@ def relatorio_vendas(
     - Benchmarking
     """
 )
-def estatisticas_gerais(db: Session = Depends(get_db)):
+def estatisticas_gerais(
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
+):
     """Retorna estatísticas consolidadas do sistema"""
     
     # ========== TAXA DE DEVOLUÇÃO ==========
@@ -661,7 +669,11 @@ def estatisticas_gerais(db: Session = Depends(get_db)):
     - Dados ordenados do mais antigo para o mais recente
     """
 )
-def analise_crescimento(db: Session = Depends(get_db)):
+def analise_crescimento(
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
+):
+
     """Retorna análise de crescimento dos últimos 6 meses"""
     
     from collections import defaultdict

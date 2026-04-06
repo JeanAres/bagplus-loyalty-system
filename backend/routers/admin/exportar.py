@@ -6,6 +6,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from database import get_db
 from datetime import datetime
+from middleware.auth import require_role
 import models
 import csv
 import io
@@ -62,7 +63,8 @@ def exportar_clientes(
     status: str = None,
     data_inicio: str = None,
     data_fim: str = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
 ):
     """Exporta clientes para CSV"""
     
@@ -210,7 +212,8 @@ def exportar_clientes(
 def exportar_sacolas(
     status: str = None,
     lote_id: int = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
 ):
     """Exporta sacolas para CSV"""
     
@@ -356,7 +359,8 @@ def exportar_usos(
     data_inicio: str = None,
     data_fim: str = None,
     cpf: str = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
 ):
     """Exporta registros de uso para CSV"""
     

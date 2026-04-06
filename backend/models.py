@@ -1,5 +1,5 @@
 # backend/models.py
-from sqlalchemy import Column, String, Integer, DateTime, Float, ForeignKey, Enum, Boolean
+from sqlalchemy import Column, Integer, String, Float, DateTime, Enum, ForeignKey, Boolean, Text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from datetime import datetime
@@ -109,3 +109,43 @@ class Alerta(Base):
     data_resolucao = Column(DateTime, nullable=True)
     
     cliente = relationship("Cliente", back_populates="alertas")
+
+    # ========== AUTENTICAÇÃO E SEGURANÇA ==========
+
+class RoleUsuario(str, Enum):
+    """Papéis de usuário no sistema"""
+    admin = "admin"
+    gerente = "gerente"
+    caixa = "caixa"
+
+
+class Usuario(Base):
+    """Usuários do sistema com autenticação"""
+    __tablename__ = "usuarios"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(50), unique=True, nullable=False, index=True)
+    password_hash = Column(String(255), nullable=False)
+    nome = Column(String(100), nullable=False)
+    role = Column(Enum("admin", "gerente", "caixa", name="role_usuario"), nullable=False, default="caixa")
+    ativo = Column(Boolean, default=True, nullable=False)
+    data_criacao = Column(DateTime, default=datetime.now, nullable=False)
+    ultimo_login = Column(DateTime, nullable=True)
+
+
+class LogAuditoria(Base):
+    """Log de ações administrativas para auditoria"""
+    __tablename__ = "logs_auditoria"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
+    usuario_username = Column(String(50), nullable=True)  # Guardamos username também
+    acao = Column(String(50), nullable=False, index=True)
+    entidade_tipo = Column(String(50), nullable=True)
+    entidade_id = Column(String(50), nullable=True)
+    detalhes = Column(Text, nullable=True)  # JSON em string
+    ip_address = Column(String(45), nullable=True)
+    data_hora = Column(DateTime, default=datetime.now, nullable=False, index=True)
+    
+    # Relacionamento
+    usuario = relationship("Usuario")

@@ -4,6 +4,7 @@ Endpoints administrativos - Suspensão de clientes
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
+from middleware.auth import require_role
 from datetime import datetime
 import models
 
@@ -42,7 +43,15 @@ router = APIRouter(
     - Bloqueio: Permanente (use com cautela)
     """
 )
-def suspender_cliente(cpf: str, motivo: str, db: Session = Depends(get_db)):
+
+def suspender_cliente(
+    cpf: str, 
+    motivo: str, 
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_role(["admin"]))
+
+    ):
+
     """Suspende benefícios do cliente"""
     
     cliente = db.query(models.Cliente).filter(models.Cliente.cpf == cpf).first()
@@ -117,7 +126,13 @@ def suspender_cliente(cpf: str, motivo: str, db: Session = Depends(get_db)):
     - Suspensão foi acidente/erro
     """
 )
-def reativar_cliente(cpf: str, db: Session = Depends(get_db)):
+def reativar_cliente(
+    cpf: str, 
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_role(["admin"]))
+
+    ):
+
     """Reativa benefícios do cliente"""
     
     cliente = db.query(models.Cliente).filter(models.Cliente.cpf == cpf).first()
@@ -188,7 +203,12 @@ def reativar_cliente(cpf: str, db: Session = Depends(get_db)):
     **Observação:** Ordenado por data de suspensão (mais recente primeiro)
     """
 )
-def listar_clientes_suspensos(db: Session = Depends(get_db)):
+def listar_clientes_suspensos(
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
+    
+    ):
+
     """Lista clientes suspensos ou bloqueados"""
     
     clientes = db.query(models.Cliente).filter(
