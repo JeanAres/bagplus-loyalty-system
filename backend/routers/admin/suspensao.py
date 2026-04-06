@@ -1,6 +1,7 @@
 """
 Endpoints administrativos - Suspensão de clientes
 """
+from utils.audit import registrar_log
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
@@ -82,6 +83,19 @@ def suspender_cliente(
     cliente.data_suspensao = datetime.now()
     
     db.commit()
+    # Registrar log
+    registrar_log(
+        db=db,
+        usuario=current_user,
+        acao="suspender_cliente",
+        entidade_tipo="Cliente",
+        entidade_id=cpf,
+        detalhes={
+            "motivo": motivo,
+            "status_anterior": "ativo",
+            "status_novo": "suspenso"
+        }
+    )
     db.refresh(cliente)
     
     return {
@@ -154,12 +168,25 @@ def reativar_cliente(
     # Reativar
     motivo_anterior = cliente.motivo_suspensao
     data_suspensao_anterior = cliente.data_suspensao
+    status_anterior = cliente.status_beneficios.value
     
     cliente.status_beneficios = models.StatusBeneficios.ativo
     cliente.motivo_suspensao = None
     cliente.data_suspensao = None
     
     db.commit()
+    # Registrar log
+    registrar_log(
+        db=db,
+        usuario=current_user,
+        acao="reativar_cliente",
+        entidade_tipo="Cliente",
+        entidade_id=cpf,
+        detalhes={
+            "status_anterior": status_anterior,
+            "status_novo": "ativo"
+        }
+    )
     db.refresh(cliente)
     
     return {

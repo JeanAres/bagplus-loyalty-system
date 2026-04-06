@@ -1,6 +1,7 @@
 """
 Endpoints administrativos - Gerenciamento de alertas
 """
+from utils.audit import registrar_log
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
@@ -187,6 +188,20 @@ def resolver_alerta(
     alerta.data_resolucao = datetime.now()
     
     db.commit()
+    # Registrar log
+    registrar_log(
+        db=db,
+        usuario=current_user,
+        acao="resolver_alerta",
+        entidade_tipo="Alerta",
+        entidade_id=str(alerta_id),
+        detalhes={
+            "tipo_alerta": alerta.tipo.value,
+            "gravidade": alerta.gravidade.value,
+            "cliente_cpf": alerta.cliente_cpf,
+            "observacao": observacao
+        }
+    )
     db.refresh(alerta)
     
     return {

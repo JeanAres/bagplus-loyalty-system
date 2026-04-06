@@ -2,6 +2,7 @@
 Endpoints administrativos - Gerenciamento de lotes
 """
 from fastapi import APIRouter, Depends, HTTPException
+from utils.audit import registrar_log
 from sqlalchemy.orm import Session
 from database import get_db
 from middleware.auth import require_role
@@ -136,6 +137,19 @@ def importar_lote_csv(
         sacolas_criadas.append(sacola_id)
     
     db.commit()
+    # Registrar log
+    registrar_log(
+        db=db,
+        usuario=current_user,
+        acao="importar_lote",
+        entidade_tipo="Lote",
+        entidade_id=str(lote.id),
+        detalhes={
+            "data_fabricacao": data_fabricacao,
+            "quantidade": quantidade,
+            "range": f"{inicio} - {fim}"
+        }
+    )
     
     return {
         "sucesso": True,

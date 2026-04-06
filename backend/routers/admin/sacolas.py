@@ -1,6 +1,7 @@
 """
 Endpoints administrativos - Gestão de sacolas
 """
+from utils.audit import registrar_log
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
@@ -325,6 +326,22 @@ def transferir_sacola(
     sacola.cliente_cpf = cpf_destino
     
     db.commit()
+    # Registrar log
+    registrar_log(
+        db=db,
+        usuario=current_user,
+        acao="transferir_sacola",
+        entidade_tipo="Sacola",
+        entidade_id=sacola_id,
+        detalhes={
+            "cpf_origem": cpf_origem,
+            "nome_origem": cliente_origem.nome,
+            "cpf_destino": cpf_destino,
+            "nome_destino": cliente_destino.nome,
+            "motivo": motivo.strip(),
+            "utilizacoes_atual": sacola.utilizacoes
+        }
+    )
     db.refresh(sacola)
     
     return {
@@ -435,11 +452,29 @@ def resetar_contador(
     
     # Guardar valores antigos
     utilizacoes_anterior = sacola.utilizacoes
+
+    # Buscar cliente
+    cliente = db.query(models.Cliente).filter(models.Cliente.cpf == sacola.cliente_cpf).first()
     
     # Resetar contador
     sacola.utilizacoes = 0
     
     db.commit()
+    # Registrar log
+    registrar_log(
+        db=db,
+        usuario=current_user,
+        acao="resetar_contador",
+        entidade_tipo="Sacola",
+        entidade_id=sacola_id,
+        detalhes={
+            "utilizacoes_anterior": utilizacoes_anterior,
+            "utilizacoes_nova": 0,
+            "motivo": motivo.strip(),
+            "cliente_cpf": sacola.cliente_cpf,
+            "cliente_nome": cliente.nome if cliente else "Desconhecido"
+        }
+    )
     db.refresh(sacola)
     
     # Contar registros de uso (para validação)
