@@ -8,8 +8,8 @@ from database import engine
 import models
 
 # Importar routers
-from routers import clientes, sacolas, auth
-from routers.admin import lotes, suspensao, alertas, relatorios, sacolas as admin_sacolas, exportar, usuarios, auditoria
+from routers import clientes, sacolas, auth, notificacoes
+from routers.admin import lotes, suspensao, alertas, relatorios, sacolas as admin_sacolas, exportar, usuarios, auditoria, notificacoes as admin_notificacoes
 
 # Importar utilitários de autenticação
 from utils.security import hash_password, create_access_token
@@ -66,7 +66,7 @@ def criar_admin_padrao():
 # Configurar aplicação
 app = FastAPI(
     title="Bag+ API",
-    version="1.0.0",
+    version="0.90-beta",
     description="""
     Sistema de gerenciamento de sacolas reutilizáveis com programa de fidelidade e autenticação JWT.
     
@@ -82,7 +82,11 @@ app = FastAPI(
     
     **Auth:** Login com JWT, informações do usuário logado, token de desenvolvimento.
     
-    ## Módulos Administrativos (27 endpoints - REQUER AUTENTICAÇÃO)
+    ## Notificações (4 endpoints)
+    
+    **Notificações:** Criar notificação, listar do cliente, marcar como lida, remover.
+    
+    ## Módulos Administrativos (30 endpoints - REQUER AUTENTICAÇÃO)
     
     **Lotes (3):** Importação, listagem, estatísticas por lote.
     
@@ -101,13 +105,15 @@ app = FastAPI(
     
     **Auditoria (1):** Consultar logs de ações administrativas.
     
+    **Notificações (3):** Listar todas, envio em massa (broadcast), limpeza de antigas.
+    
     ## Segurança
     
     Autenticação JWT com tokens de 24h, sistema de roles (admin/gerente/caixa), 
     QR Codes com checksum SHA256, validação de intervalo mínimo entre usos (4h), 
     detecção automática de fraudes, logs de auditoria.
     
-    ## Total: 45 endpoints funcionais
+    ## Total: 52 endpoints funcionais
     
     Suporte: jean06soares@gmail.com
     """,
@@ -130,10 +136,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Incluir routers
+# Incluir routers públicos
 app.include_router(clientes.router)
 app.include_router(sacolas.router)
 app.include_router(auth.router)
+app.include_router(notificacoes.router)
+
+# Incluir routers admin
 app.include_router(lotes.router)
 app.include_router(suspensao.router)
 app.include_router(alertas.router)
@@ -142,6 +151,7 @@ app.include_router(admin_sacolas.router)
 app.include_router(exportar.router)
 app.include_router(usuarios.router)
 app.include_router(auditoria.router)
+app.include_router(admin_notificacoes.router)
 
 @app.get(
     "/",
@@ -153,9 +163,9 @@ def read_root():
     """Endpoint raiz com informações da API"""
     return {
         "api": "Bag+ - Sistema de Fidelização Sustentável",
-        "version": "1.0.0",
+        "version": "0.90-beta",
         "status": "online",
-        "endpoints": 45,
+        "endpoints": 52,
         "docs": "/docs",
         "message": "Sua sacola vale mais."
     }
@@ -191,8 +201,7 @@ if __name__ == "__main__":
             print("1. Abra http://localhost:8000/docs")
             print("2. Clique no botão 'Authorize' (cadeado)")
             print("3. Cole o token acima (com 'Bearer')")
-            print("4. Clique em 'Authorize'")
-            print("5. Pronto! Agora pode usar endpoints protegidos\n")
+            print("4. Clique em 'Authorize'\n")
             print(f"Credenciais de login (alternativa):")
             print(f"  Username: {dev_username}")
             print(f"  Password: {dev_password}\n")

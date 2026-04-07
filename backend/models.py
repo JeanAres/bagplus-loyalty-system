@@ -1,5 +1,5 @@
 # backend/models.py
-from sqlalchemy import Column, Integer, String, Float, DateTime, Enum, ForeignKey, Boolean, Text
+from sqlalchemy import Column, String, Integer, DateTime, Float, ForeignKey, Enum, Boolean, Text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from datetime import datetime
@@ -20,16 +20,30 @@ class StatusBeneficios(str, enum.Enum):
     bloqueado = "bloqueado"
 
 class TipoAlerta(str, enum.Enum):
-    """Tipos de alertas de detecção"""
-    valores_diferentes_mesmo_dia = "valores_diferentes_mesmo_dia"
-    valor_repetido_dias_diferentes = "valor_repetido_dias_diferentes"
+    """Tipos de alertas de fraude"""
+    valores_diferentes = "valores_diferentes"
     abuso_valor_minimo = "abuso_valor_minimo"
+    padrao_valores_repetidos = "padrao_valores_repetidos"
 
 class GravidadeAlerta(str, enum.Enum):
-    """Gravidade dos alertas"""
+    """Gravidade do alerta"""
     baixa = "baixa"
     media = "media"
     alta = "alta"
+
+class UserRole(str, enum.Enum):
+    """Roles de usuários do sistema"""
+    admin = "admin"
+    gerente = "gerente"
+    caixa = "caixa"
+
+class TipoNotificacao(str, enum.Enum):
+    """Tipos de notificações para clientes"""
+    sacola_proximo_limite = "sacola_proximo_limite"
+    sacola_expirada = "sacola_expirada"
+    desconto_disponivel = "desconto_disponivel"
+    novo_lote = "novo_lote"
+    suspensao_conta = "suspensao_conta"
 
 class Lote(Base):
     """Lote de sacolas fabricadas"""
@@ -59,7 +73,7 @@ class Cliente(Base):
     data_suspensao = Column(DateTime, nullable=True)
     
     sacolas = relationship("Sacola", back_populates="cliente")
-    alertas = relationship("Alerta", back_populates="cliente")
+    notificacoes = relationship("Notificacao", back_populates="cliente")
 
 class Sacola(Base):
     """Sacola reutilizável do programa"""
@@ -95,57 +109,57 @@ class RegistroUso(Base):
     sacola = relationship("Sacola", back_populates="registros")
 
 class Alerta(Base):
-    """Alertas de detecção de padrões suspeitos"""
+    """Alertas de fraude detectados automaticamente"""
     __tablename__ = "alertas"
     
     id = Column(Integer, primary_key=True, index=True)
     tipo = Column(Enum(TipoAlerta), nullable=False)
     gravidade = Column(Enum(GravidadeAlerta), nullable=False)
     cliente_cpf = Column(String, ForeignKey("clientes.cpf"), nullable=False)
-    descricao = Column(String, nullable=False)
+    descricao = Column(Text, nullable=False)
     data_deteccao = Column(DateTime, default=datetime.now)
     resolvido = Column(Boolean, default=False)
-    observacao = Column(String, nullable=True)
+    observacao = Column(Text, nullable=True)
     data_resolucao = Column(DateTime, nullable=True)
-    
-    cliente = relationship("Cliente", back_populates="alertas")
-
-    # ========== AUTENTICAÇÃO E SEGURANÇA ==========
-
-class RoleUsuario(str, Enum):
-    """Papéis de usuário no sistema"""
-    admin = "admin"
-    gerente = "gerente"
-    caixa = "caixa"
-
 
 class Usuario(Base):
     """Usuários do sistema com autenticação"""
     __tablename__ = "usuarios"
     
     id = Column(Integer, primary_key=True, index=True)
-    username = Column(String(50), unique=True, nullable=False, index=True)
-    password_hash = Column(String(255), nullable=False)
-    nome = Column(String(100), nullable=False)
-    role = Column(Enum("admin", "gerente", "caixa", name="role_usuario"), nullable=False, default="caixa")
-    ativo = Column(Boolean, default=True, nullable=False)
-    data_criacao = Column(DateTime, default=datetime.now, nullable=False)
+    username = Column(String, unique=True, nullable=False, index=True)
+    password_hash = Column(String, nullable=False)
+    nome = Column(String, nullable=False)
+    role = Column(Enum(UserRole), nullable=False)
+    ativo = Column(Boolean, default=True)
+    data_criacao = Column(DateTime, default=datetime.now)
     ultimo_login = Column(DateTime, nullable=True)
 
-
 class LogAuditoria(Base):
-    """Log de ações administrativas para auditoria"""
+    """Logs de auditoria de ações administrativas"""
     __tablename__ = "logs_auditoria"
     
     id = Column(Integer, primary_key=True, index=True)
-    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
-    usuario_username = Column(String(50), nullable=True)  # Guardamos username também
-    acao = Column(String(50), nullable=False, index=True)
-    entidade_tipo = Column(String(50), nullable=True)
-    entidade_id = Column(String(50), nullable=True)
-    detalhes = Column(Text, nullable=True)  # JSON em string
-    ip_address = Column(String(45), nullable=True)
-    data_hora = Column(DateTime, default=datetime.now, nullable=False, index=True)
+    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
+    usuario_username = Column(String, nullable=False)
+    acao = Column(String, nullable=False)
+    entidade_tipo = Column(String, nullable=False)
+    entidade_id = Column(String, nullable=False)
+    detalhes = Column(Text, nullable=True)
+    ip_address = Column(String, nullable=True)
+    data_hora = Column(DateTime, default=datetime.now)
+
+class Notificacao(Base):
+    """Notificações para clientes"""
+    __tablename__ = "notificacoes"
     
-    # Relacionamento
-    usuario = relationship("Usuario")
+    id = Column(Integer, primary_key=True, index=True)
+    cliente_cpf = Column(String, ForeignKey("clientes.cpf"), nullable=False)
+    tipo = Column(Enum(TipoNotificacao), nullable=False)
+    titulo = Column(String, nullable=False)
+    mensagem = Column(Text, nullable=False)
+    lida = Column(Boolean, default=False)
+    data_criacao = Column(DateTime, default=datetime.now)
+    data_leitura = Column(DateTime, nullable=True)
+    
+    cliente = relationship("Cliente", back_populates="notificacoes")

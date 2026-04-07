@@ -1,6 +1,7 @@
 """
 Endpoints administrativos - Suspensão de clientes
 """
+from utils.notifications import notificar_suspensao_conta
 from utils.audit import registrar_log
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -83,6 +84,21 @@ def suspender_cliente(
     cliente.data_suspensao = datetime.now()
     
     db.commit()
+    # ========== NOTIFICAÇÃO AUTOMÁTICA ==========
+    
+    # Notificar cliente sobre suspensão
+    try:
+        notificar_suspensao_conta(
+            db=db,
+            cliente_cpf=cpf,
+            motivo=motivo
+        )
+        db.commit()
+    except Exception as e:
+        print(f"Erro ao criar notificação de suspensão: {e}")
+    
+    # ========== FIM NOTIFICAÇÃO AUTOMÁTICA ==========
+    
     # Registrar log
     registrar_log(
         db=db,

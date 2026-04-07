@@ -13,6 +13,10 @@ from utils import (
     detectar_valor_repetido_dias_diferentes,
     detectar_abuso_valor_minimo
 )
+from utils.notifications import (
+    notificar_sacola_proximo_limite,
+    notificar_desconto_disponivel
+)
 
 router = APIRouter(
     prefix="/api/sacolas",
@@ -399,6 +403,10 @@ def ativar_sacolas_lote(
     -  Sempre mesmo valor em dias diferentes
     -  Abuso de valor mínimo (muitas sacolas com R$ 15,00)
     
+    **Notificações automáticas:**
+    -  Marco de fidelidade atingido (10, 20, 30, 40 usos)
+    -  Sacola próxima do limite (35+ usos)
+    
     **Parâmetros:**
     - sacola_id: ID da sacola (ex: BAG-00001)
     - valor_compra: Valor da compra (aceita vírgula ou ponto)
@@ -483,6 +491,37 @@ def registrar_uso(
     
     db.commit()
     db.refresh(sacola)
+    
+    # ========== NOTIFICAÇÕES AUTOMÁTICAS ==========
+    
+    # Notificar se sacola está próxima do limite (35+ usos)
+    if sacola.utilizacoes >= 35 and sacola.utilizacoes < 40:
+        try:
+            notificar_sacola_proximo_limite(
+                db=db,
+                cliente_cpf=sacola.cliente_cpf,
+                sacola_id=sacola.id,
+                utilizacoes=sacola.utilizacoes
+            )
+            db.commit()
+        except Exception as e:
+            # Não falhar o registro se notificação falhar
+            print(f"Erro ao criar notificação: {e}")
+    
+    # Notificar se atingiu marco de fidelidade (10, 20, 30, 40 usos)
+    marcos_fidelidade = [10, 20, 30, 40]
+    if sacola.utilizacoes in marcos_fidelidade:
+        try:
+            notificar_desconto_disponivel(
+                db=db,
+                cliente_cpf=sacola.cliente_cpf,
+                marco=sacola.utilizacoes
+            )
+            db.commit()
+        except Exception as e:
+            print(f"Erro ao criar notificação de desconto: {e}")
+    
+    # ========== FIM NOTIFICAÇÕES AUTOMÁTICAS ==========
     
     # Executar detecções de padrões suspeitos
     try:
@@ -631,4 +670,107 @@ def historico_uso(sacola_id: str, db: Session = Depends(get_db)):
         "total_gasto": round(total_gasto, 2),
         "valor_medio": round(valor_medio, 2),
         "historico": historico
+    }
+
+
+@router.post(
+    "/verificar-qr",
+    summary="Verificar QR Code sem ativar",
+    description="""
+    Valida o QR Code sem vincular a sacola ao cliente.
+    
+    **Quando usar:** 
+    - Verificar se QR Code é válido antes de ativar
+    - Testar integridade de QR Codes impressos
+    - Auditoria de segurança
+    
+    **Validações:**
+    - Formato do QR Code
+    - Checksum SHA256
+    
+    **Parâmetro:**
+    - qr_code: QR Code completo (BAG-00001:2026-03-31:checksum)
+    """
+)
+def verificar_qr_code(qr_code: str, db: Session = Depends(get_db)):
+    """Verifica validade do QR Code sem ativar"""
+    
+    valido, sacola_id, data_criacao, erro = validar_qrcode_checksum(qr_code)
+    
+    if not valido:
+        return {
+            "valido": False,
+            "erro": erro
+        }
+    
+    # Buscar sacola
+    sacola = db.query(models.Sacola).filter(models.Sacola.id == sacola_id).first()
+    
+    if not sacola:
+        return {
+            "valido": False,
+            "erro": f"Sacola {sacola_id} não encontrada no sistema"
+        }
+    
+    # Validar checksum do banco
+    if sacola.checksum != qr_code.split(':')[2]:
+        return {
+            "valido": False,
+            "erro": "Checksum não confere com registro do banco"
+        }
+    
+    return {
+        "valido": True,
+        "sacola_id": sacola_id,
+        "data_criacao": data_criacao,
+        "status": sacola.status.value
+    }
+
+
+@router.get(
+    "/ativas",
+    summary="Listar sacolas ativas",
+    description="""
+    Lista todas as sacolas que estão ativas (vinculadas a clientes).
+    
+    **Informações retornadas:**
+    - ID da sacola
+    - Cliente vinculado
+    - Número de utilizações
+    - Data da última utilização
+    
+    **Quando usar:**
+    - Dashboard administrativo
+    - Relatórios de uso
+    - Monitoramento geral
+    
+    **Observação:** Lista ordenada por última utilização (mais recentes primeiro)
+    """
+)
+def listar_sacolas_ativas(db: Session = Depends(get_db)):
+    """Lista todas as sacolas ativas"""
+    
+    sacolas = db.query(models.Sacola).filter(
+        models.Sacola.status == models.StatusSacola.ativo
+    ).order_by(models.Sacola.ultima_utilizacao.desc()).all()
+    
+    resultado = []
+    for sacola in sacolas:
+        cliente = db.query(models.Cliente).filter(
+            models.Cliente.cpf == sacola.cliente_cpf
+        ).first()
+        
+        resultado.append({
+            "id": sacola.id,
+            "cliente": {
+                "cpf": cliente.cpf if cliente else None,
+                "nome": cliente.nome if cliente else None
+            },
+            "utilizacoes": sacola.utilizacoes,
+            "ultima_utilizacao": sacola.ultima_utilizacao
+        })
+    
+    return {
+        "total": len(resultado),
+        "sacolas": resultado
     }
