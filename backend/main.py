@@ -68,54 +68,70 @@ app = FastAPI(
     title="Bag+ API",
     version="0.90-beta",
     description="""
-    Sistema de gerenciamento de sacolas reutilizáveis com programa de fidelidade e autenticação JWT.
-    
-    ## Módulos Públicos (15 endpoints)
-    
-    **Clientes (8):** Cadastro, busca por nome, validação de CPF, listagem de sacolas, 
-    estatísticas, histórico completo, exclusão restritiva.
-    
-    **Sacolas (7):** Ativação, registro de uso, devolução, consulta, listagem, 
-    histórico de uso, verificação de QR Code.
-    
-    ## Autenticação (3 endpoints)
-    
-    **Auth:** Login com JWT, informações do usuário logado, token de desenvolvimento.
-    
-    ## Notificações (4 endpoints)
-    
-    **Notificações:** Criar notificação, listar do cliente, marcar como lida, remover.
-    
-    ## Módulos Administrativos (30 endpoints - REQUER AUTENTICAÇÃO)
-    
-    **Lotes (3):** Importação, listagem, estatísticas por lote.
-    
-    **Clientes (3):** Suspensão, reativação, listagem de suspensos.
-    
-    **Alertas (2):** Listagem de alertas, resolução.
-    
-    **Relatórios (4):** Dashboard, vendas por período, estatísticas gerais, análise de crescimento.
-    
-    **Sacolas (6):** Próximas do limite, consulta de estoque, transferência, reset de contador, 
-    identificação de riscos.
-    
-    **Exportação (3):** Exportar clientes, sacolas e usos para CSV.
-    
-    **Usuários (5):** Criar, listar, buscar, editar, desativar usuários.
-    
-    **Auditoria (1):** Consultar logs de ações administrativas.
-    
-    **Notificações (3):** Listar todas, envio em massa (broadcast), limpeza de antigas.
-    
-    ## Segurança
-    
-    Autenticação JWT com tokens de 24h, sistema de roles (admin/gerente/caixa), 
-    QR Codes com checksum SHA256, validação de intervalo mínimo entre usos (4h), 
-    detecção automática de fraudes, logs de auditoria.
-    
-    ## Total: 52 endpoints funcionais
-    
-    Suporte: jean06soares@gmail.com
+Sistema de gerenciamento de sacolas reutilizáveis com programa de fidelidade e autenticação JWT.
+
+## Módulos Públicos (15 endpoints)
+
+### Clientes (8)
+Cadastro, busca por nome, validação de CPF, listagem de sacolas, estatísticas, histórico completo, exclusão restritiva.
+
+### Sacolas (7)
+Ativação, registro de uso, devolução, consulta, listagem, histórico de uso, verificação de QR Code.
+
+---
+
+## Autenticação (3 endpoints)
+
+**Auth:** Login com JWT, informações do usuário logado, token de desenvolvimento.
+
+---
+
+## Notificações (4 endpoints)
+
+**Notificações:** Criar notificação, listar do cliente, marcar como lida, remover.
+
+---
+
+## Módulos Administrativos (30 endpoints - REQUER AUTENTICAÇÃO)
+
+### Lotes (3)
+Importação, listagem, estatísticas por lote.
+
+### Clientes (3)
+Suspensão, reativação, listagem de suspensos.
+
+### Alertas (2)
+Listagem de alertas, resolução.
+
+### Relatórios (4)
+Dashboard, vendas por período, estatísticas gerais, análise de crescimento.
+
+### Sacolas (6)
+Próximas do limite, consulta de estoque, transferência, reset de contador, identificação de riscos.
+
+### Exportação (3)
+Exportar clientes, sacolas e usos para CSV.
+
+### Usuários (5)
+Criar, listar, buscar, editar, desativar usuários.
+
+### Auditoria (1)
+Consultar logs de ações administrativas.
+
+### Notificações (3)
+Listar todas, envio em massa (broadcast), limpeza de antigas.
+
+---
+
+## Segurança
+
+Autenticação JWT com tokens de 24h, sistema de roles (admin/gerente/caixa), QR Codes com checksum SHA256, validação de intervalo mínimo entre usos (4h), detecção automática de fraudes, logs de auditoria.
+
+---
+
+## Total: 52 endpoints funcionais
+
+**Suporte:** jean06soares@gmail.com
     """,
     contact={
         "name": "Bag+ Suporte",
