@@ -111,7 +111,7 @@ cp .env.example .env
 notepad .env  # Adicionar SECRET_KEY única
 
 # 6. Iniciar servidor
-python main.py
+python run.py
 ```
 
 O servidor estará rodando em `http://localhost:8000`
@@ -225,49 +225,60 @@ Authorization: Bearer eyJ...
 ```
 bagplus-loyalty-system/
 ├── backend/                    # API FastAPI
-│   ├── routers/               # Módulos da API organizados
-│   │   ├── admin/            # Endpoints administrativos (8 módulos)
-│   │   │   ├── __init__.py
-│   │   │   ├── lotes.py      # Gestão de lotes (3 endpoints)
-│   │   │   ├── suspensao.py  # Suspensão de clientes (3 endpoints)
-│   │   │   ├── alertas.py    # Sistema de alertas (2 endpoints)
-│   │   │   ├── relatorios.py # Dashboard e relatórios (4 endpoints)
-│   │   │   ├── sacolas.py    # Gestão avançada (6 endpoints)
-│   │   │   ├── exportar.py   # Exportação CSV (3 endpoints)
-│   │   │   ├── usuarios.py   # Gestão de usuários (5 endpoints)
-│   │   │   └── auditoria.py  # Logs de auditoria (1 endpoint)
-│   │   ├── clientes.py       # Endpoints públicos de clientes (8 endpoints)
-│   │   ├── sacolas.py        # Endpoints públicos de sacolas (7 endpoints)
-│   │   └── auth.py           # Autenticação JWT (3 endpoints)
-│   ├── middleware/            # Middlewares personalizados
-│   │   ├── __init__.py
-│   │   └── auth.py           # Autenticação JWT e verificação de roles
-│   ├── utils/                 # Utilitários
-│   │   ├── __init__.py
-│   │   ├── helpers.py        # Funções auxiliares
-│   │   ├── security.py       # JWT, bcrypt, tokens
-│   │   └── audit.py          # Sistema de logs de auditoria
-│   ├── main.py               # Servidor principal (45 endpoints)
-│   ├── models.py             # Modelos do banco (7 tabelas)
-│   ├── database.py           # Configuração SQLAlchemy
+│   ├── app/                   # Aplicação principal (arquitetura modular)
+│   │   ├── main.py           # Configuração FastAPI e routers
+│   │   ├── routers/          # Endpoints da API
+│   │   │   ├── admin/       # Endpoints administrativos (9 módulos)
+│   │   │   │   ├── lotes.py      # Gestão de lotes (3 endpoints)
+│   │   │   │   ├── suspensao.py  # Suspensão de clientes (3 endpoints)
+│   │   │   │   ├── alertas.py    # Sistema de alertas (2 endpoints)
+│   │   │   │   ├── relatorios.py # Dashboard e relatórios (4 endpoints)
+│   │   │   │   ├── sacolas.py    # Gestão avançada (6 endpoints)
+│   │   │   │   ├── exportar.py   # Exportação CSV (3 endpoints)
+│   │   │   │   ├── usuarios.py   # Gestão de usuários (5 endpoints)
+│   │   │   │   ├── auditoria.py  # Logs de auditoria (1 endpoint)
+│   │   │   │   └── notificacoes.py # Gestão de notificações (3 endpoints)
+│   │   │   ├── clientes.py       # Endpoints públicos (8 endpoints)
+│   │   │   ├── sacolas.py        # Endpoints públicos (7 endpoints)
+│   │   │   ├── notificacoes.py   # Notificações públicas (4 endpoints)
+│   │   │   └── auth.py           # Autenticação JWT (3 endpoints)
+│   │   ├── core/             # Lógica central e utilitários
+│   │   │   ├── security.py   # JWT, bcrypt, tokens
+│   │   │   ├── audit.py      # Sistema de logs de auditoria
+│   │   │   ├── helpers.py    # Funções auxiliares
+│   │   │   └── notifications.py # Sistema de notificações automáticas
+│   │   ├── db/               # Camada de dados
+│   │   │   ├── models.py     # Modelos do banco (8 tabelas)
+│   │   │   └── session.py    # Configuração SQLAlchemy
+│   │   └── middleware/       # Middlewares personalizados
+│   │       └── auth.py       # Autenticação JWT e verificação de roles
+│   ├── docs/                  # Documentação e assets
+│   │   └── swagger/          # Configuração Swagger UI customizado
+│   │       ├── config/       # Setup e metadados da API
+│   │       │   ├── setup.py      # Configuração customizada
+│   │       │   └── metadata.py   # Tags e descrições
+│   │       └── styles/       # Tema dark profissional
+│   │           └── dark.css      # GitHub Dark theme
+│   ├── scripts/               # Scripts auxiliares
+│   │   └── dev_setup.py      # Utilitários de desenvolvimento
+│   ├── data/                  # Banco de dados
+│   │   └── bagplus.db        # SQLite database
+│   ├── run.py                # Launcher principal do servidor
 │   ├── requirements.txt      # Dependências Python
-│   └── .env                  # Variáveis de ambiente (SECRET_KEY, JWT_SECRET, etc)
+│   └── .env                  # Variáveis de ambiente
 ├── scripts/                   # Scripts utilitários
 │   ├── gerar_qrcodes.py      # Geração em massa de QR Codes
 │   ├── limpar_qrcodes.py     # Limpeza de QR Codes antigos
 │   └── seed_data.py          # Popular banco com dados de teste
 ├── qrcodes/                   # QR Codes gerados (ignorado no Git)
-│   ├── lote_XXXXX.csv        # Dados do lote para importação
-│   ├── lote_XXXXX_IMPRESSAO.pdf  # PDF para gráfica
-│   └── ultimo_id.txt         # Controle de sequência
-├── docs/                      # Documentação
-│   └── SCANNER-REMOTE-KEYBOARD.md  # Como usar scanner
+├── docs/                      # Documentação geral
+│   └── SCANNER-REMOTE-KEYBOARD.md
 ├── frontend-caixa/            # Interface web (futuro)
 ├── tests/                     # Testes automatizados (futuro)
 ├── README.md                  # Este arquivo
 ├── PROPOSTA.md               # Proposta de negócio
 ├── CONTRIBUTING.md           # Guia de contribuição
-└── .gitignore                # Arquivos ignorados (qrcodes/, .env, etc)
+└── .gitignore                # Arquivos ignorados
 ```
 
 ---
@@ -1050,4 +1061,4 @@ Este é um projeto comercial proprietário. O código está disponível para ava
 
 ---
 
-**Versão:** v0.85-beta | **45 endpoints funcionais** | **Atualizado:** 06/04/2026
+**Versão:** v0.90-beta | **52 endpoints funcionais** | **Atualizado:** 08/04/2026 | **Arquitetura:** Modular
