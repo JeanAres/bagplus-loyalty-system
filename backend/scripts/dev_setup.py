@@ -1,8 +1,8 @@
 """
 Utilitários para ambiente de desenvolvimento
 """
-from models import Usuario
-from utils.security import hash_password, create_access_token
+from app.db.models import Usuario
+from app.core.security import hash_password, create_access_token
 import os
 
 def criar_admin_padrao(db_session_class):

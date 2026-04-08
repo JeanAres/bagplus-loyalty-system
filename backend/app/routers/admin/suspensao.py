@@ -1,14 +1,14 @@
 """
 Endpoints administrativos - Suspensão de clientes
 """
-from utils.notifications import notificar_suspensao_conta
-from utils.audit import registrar_log
+from app.core.notifications import notificar_suspensao_conta
+from app.core.audit import registrar_log
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from database import get_db
-from middleware.auth import require_role
+from app.db.session import get_db
+from app.middleware.auth import require_role
 from datetime import datetime
-import models
+from app.db import models
 
 router = APIRouter(
     prefix="/api/admin/clientes",

@@ -4,10 +4,10 @@ Endpoints administrativos - Exportação de dados para CSV
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
-from database import get_db
+from app.db.session import get_db
 from datetime import datetime
-from middleware.auth import require_role
-import models
+from app.middleware.auth import require_role
+from app.db import models
 import csv
 import io
 

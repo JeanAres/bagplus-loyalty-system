@@ -2,7 +2,7 @@
 Utilitário para criação automática de notificações
 """
 from sqlalchemy.orm import Session
-from models import Notificacao, TipoNotificacao
+from app.db.models import Notificacao, TipoNotificacao
 from datetime import datetime
 
 def criar_notificacao_automatica(

@@ -3,11 +3,11 @@ Endpoints administrativos - Relatórios e estatísticas
 """
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from database import get_db
+from app.db.session import get_db
 from datetime import datetime, timedelta
-import models
+from app.db import models
 from dateutil.relativedelta import relativedelta
-from middleware.auth import require_role
+from app.middleware.auth import require_role
 
 router = APIRouter(
     prefix="/api/admin/relatorios",

@@ -3,10 +3,10 @@ Router administrativo de notificações
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from database import get_db
-from models import Notificacao, Cliente, Usuario, TipoNotificacao
-from middleware.auth import get_current_user, require_role
-from utils.audit import registrar_log
+from app.db.session import get_db
+from app.db.models import Notificacao, Cliente, Usuario, TipoNotificacao
+from app.middleware.auth import get_current_user, require_role
+from app.core.audit import registrar_log
 from datetime import datetime
 from typing import Optional
 import json

@@ -8,12 +8,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 # Database
-from database import engine, SessionLocal
-import models
+from app.db.session import engine, SessionLocal
+from app.db import models
 
 # Routers
-from routers import clientes, sacolas, auth, notificacoes
-from routers.admin import (
+from app.routers import clientes, sacolas, auth, notificacoes
+from app.routers.admin import (
     lotes, suspensao, alertas, relatorios,
     sacolas as admin_sacolas, exportar, usuarios,
     auditoria, notificacoes as admin_notificacoes
@@ -27,7 +27,7 @@ from docs.swagger.config.metadata import (
 from docs.swagger.config.setup import configure_swagger_ui
 
 # Utilitários de desenvolvimento
-from utils.dev_setup import criar_admin_padrao, exibir_token_dev
+from scripts.dev_setup import criar_admin_padrao, exibir_token_dev
 
 # Criar tabelas
 models.Base.metadata.create_all(bind=engine)
@@ -45,7 +45,7 @@ app = FastAPI(
 )
 
 # Montar arquivos estáticos (CSS do Swagger)
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 static_path = os.path.join(BASE_DIR, "docs", "swagger", "styles")
 app.mount("/swagger-styles", StaticFiles(directory=static_path), name="swagger-styles")
 
@@ -95,13 +95,3 @@ def read_root():
         "redoc": "/redoc",
         "message": "Sua sacola vale mais."
     }
-
-if __name__ == "__main__":
-    import uvicorn
-    
-    # Setup de desenvolvimento
-    if os.getenv("ENVIRONMENT", "development") == "development":
-        admin = criar_admin_padrao(SessionLocal)
-        exibir_token_dev(admin)
-    
-    uvicorn.run(app, host="0.0.0.0", port=8000)

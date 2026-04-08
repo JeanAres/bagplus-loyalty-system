@@ -3,7 +3,7 @@ Funções auxiliares compartilhadas
 """
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
-import models
+from app.db import models
 import os
 import hashlib
 

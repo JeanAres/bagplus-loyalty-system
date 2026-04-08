@@ -3,7 +3,7 @@ Utilitário de auditoria - Log automático de ações
 """
 from sqlalchemy.orm import Session
 from datetime import datetime
-import models
+from app.db import models
 import json
 from typing import Optional
 

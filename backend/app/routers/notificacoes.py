@@ -3,8 +3,8 @@ Router público de notificações para clientes
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from database import get_db
-from models import Notificacao, Cliente, TipoNotificacao
+from app.db.session import get_db
+from app.db.models import Notificacao, Cliente, TipoNotificacao
 from datetime import datetime
 from typing import Optional
 

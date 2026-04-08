@@ -3,11 +3,11 @@ Endpoints de autenticação - Login e gestão de tokens
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from database import get_db
+from app.db.session import get_db
 from datetime import datetime
-import models
-from utils.security import verify_password, create_access_token
-from middleware.auth import get_current_user
+from app.db import models
+from app.core.security import verify_password, create_access_token
+from app.middleware.auth import get_current_user
 
 router = APIRouter(
     prefix="/api/auth",

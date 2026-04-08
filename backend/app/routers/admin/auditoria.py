@@ -3,10 +3,10 @@ Endpoints administrativos - Logs de auditoria
 """
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from database import get_db
+from app.db.session import get_db
 from datetime import datetime
-import models
-from middleware.auth import require_role
+from app.db import models
+from app.middleware.auth import require_role
 import json
 
 router = APIRouter(

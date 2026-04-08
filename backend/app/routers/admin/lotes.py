@@ -2,12 +2,12 @@
 Endpoints administrativos - Gerenciamento de lotes
 """
 from fastapi import APIRouter, Depends, HTTPException
-from utils.audit import registrar_log
+from app.core.audit import registrar_log
 from sqlalchemy.orm import Session
-from database import get_db
-from middleware.auth import require_role
+from app.db.session import get_db
+from app.middleware.auth import require_role
 from datetime import datetime
-import models
+from app.db import models
 import os
 import hashlib
 

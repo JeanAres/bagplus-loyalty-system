@@ -3,12 +3,12 @@ Endpoints administrativos - Gestão de usuários
 """
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from database import get_db
+from app.db.session import get_db
 from datetime import datetime
-import models
-from utils.security import hash_password
-from utils.audit import registrar_log
-from middleware.auth import require_role
+from app.db import models
+from app.core.security import hash_password
+from app.core.audit import registrar_log
+from app.middleware.auth import require_role
 
 router = APIRouter(
     prefix="/api/admin/usuarios",

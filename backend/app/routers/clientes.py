@@ -3,9 +3,9 @@ Endpoints relacionados a clientes
 """
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from database import get_db
+from app.db.session import get_db
 from datetime import datetime
-import models
+from app.db import models
 
 router = APIRouter(
     prefix="/api/clientes",

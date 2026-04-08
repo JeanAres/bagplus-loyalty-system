@@ -3,17 +3,17 @@ Endpoints relacionados a sacolas
 """
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from database import get_db
+from app.db.session import get_db
 from datetime import datetime, timedelta
-import models
-from utils import (
+from app.db import models
+from app.core.helpers import (
     validar_qrcode_checksum,
     calcular_desconto_fidelidade,
     detectar_valores_diferentes_mesmo_dia,
     detectar_valor_repetido_dias_diferentes,
     detectar_abuso_valor_minimo
 )
-from utils.notifications import (
+from app.core.notifications import (
     notificar_sacola_proximo_limite,
     notificar_desconto_disponivel
 )
