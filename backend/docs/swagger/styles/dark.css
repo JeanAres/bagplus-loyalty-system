@@ -1,0 +1,470 @@
+/* ============================================================================
+   BAG+ API - SWAGGER DARK THEME
+   
+   Tema escuro profissional baseado no GitHub Dark com melhorias de contraste
+   e legibilidade para documentação técnica.
+   
+   Estrutura:
+   1. Tipografia e Cores Base
+   2. Layout e Containers
+   3. Navegação e Topbar
+   4. Documentação Principal
+   5. Grupos e Tags
+   6. Endpoints
+   7. Formulários e Inputs
+   8. Métodos HTTP
+   9. Tabelas e Schemas
+   10. Utilitários
+   ============================================================================ */
+
+
+/* ============================================================================
+   1. TIPOGRAFIA E CORES BASE
+   ============================================================================ */
+
+/* Fonte Global: Work Sans */
+.swagger-ui,
+.swagger-ui .info .title,
+.swagger-ui .info p,
+.swagger-ui .info li,
+.swagger-ui .opblock-tag,
+.swagger-ui .opblock .opblock-section-header h4,
+.swagger-ui .opblock .opblock-section-header label,
+.swagger-ui .parameter__name,
+.swagger-ui .parameter__type,
+.swagger-ui table thead tr td,
+.swagger-ui table thead tr th,
+.swagger-ui .response-col_status,
+.swagger-ui .tab li,
+.swagger-ui .btn,
+.swagger-ui select,
+.swagger-ui input,
+.swagger-ui textarea {
+    font-family: 'Work Sans', sans-serif !important;
+}
+
+/* Background Principal */
+body {
+    background-color: #0d1117 !important; 
+    color: #e6edf3 !important;
+    margin: 0;
+}
+
+.swagger-ui {
+    background-color: #0d1117 !important;
+}
+
+/* Cores de Texto Padrão */
+.swagger-ui .info .title,
+.swagger-ui .info .base-url,
+.swagger-ui .opblock-tag,
+.swagger-ui .parameter__name,
+.swagger-ui table thead tr th,
+.swagger-ui .response-col_status,
+.swagger-ui .tab li,
+.swagger-ui .opblock .opblock-section-header h4,
+.swagger-ui .opblock .opblock-section-header label,
+.swagger-ui section.models h4,
+.swagger-ui section.models h5 {
+    color: #f0f6fc !important;
+}
+
+
+/* ============================================================================
+   2. LAYOUT E CONTAINERS
+   ============================================================================ */
+
+.swagger-ui .info {
+    background-color: #0d1117 !important;
+    border: none !important;
+    margin: 20px 0 !important;
+    padding: 0 20px !important;
+}
+
+/* Alinhamento à Esquerda para Toda Documentação */
+.swagger-ui .info .description, 
+.swagger-ui .info .renderedMarkdown,
+.swagger-ui .info .description p,
+.swagger-ui .info .description li,
+.swagger-ui .info .renderedMarkdown p,
+.swagger-ui .info .renderedMarkdown li,
+.swagger-ui .info .renderedMarkdown h3 {
+    text-align: left !important;
+    margin-left: 0 !important;
+    padding-left: 0 !important;
+    max-width: 100% !important;
+}
+
+/* Listas com Indentação Apropriada */
+.swagger-ui .info ul {
+    margin-left: 0 !important;
+    padding-left: 1.5em !important;
+    text-align: left !important;
+}
+
+
+/* ============================================================================
+   3. NAVEGAÇÃO E TOPBAR
+   ============================================================================ */
+
+.swagger-ui .topbar {
+    background-color: #010409 !important;
+    border-bottom: 1px solid #30363d;
+    padding: 10px 0;
+}
+
+.swagger-ui .topbar .download-url-wrapper {
+    background-color: #0d1117 !important;
+}
+
+.swagger-ui .scheme-container {
+    background-color: #161b22 !important;
+    box-shadow: 0 1px 2px 0 rgba(0,0,0,.5) !important;
+    border-bottom: 1px solid #30363d;
+}
+
+.swagger-ui .scheme-container .schemes > label {
+    color: #f0f6fc !important;
+}
+
+
+/* ============================================================================
+   4. DOCUMENTAÇÃO PRINCIPAL
+   ============================================================================ */
+
+/* Estilos de Texto da Descrição */
+.swagger-ui .info .description p {
+    font-size: 15px !important;
+    max-width: 800px;
+    margin-bottom: 20px !important;
+    color: #c9d1d9 !important;
+    line-height: 1.6 !important;
+}
+
+/* Destaques em Negrito */
+.swagger-ui .info .description strong,
+.swagger-ui .info .renderedMarkdown strong {
+    color: #58a6ff !important;
+    display: inline-block;
+}
+
+/* Títulos H2 */
+.swagger-ui .info .markdown h2,
+.swagger-ui .info .renderedMarkdown h2 {
+    color: #f0f6fc !important;
+    font-size: 20px !important;
+    font-weight: 600 !important;
+    margin-top: 25px !important;
+    margin-bottom: 10px !important;
+    padding-bottom: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+/* Títulos H3 */
+.swagger-ui .info .markdown h3,
+.swagger-ui .info .renderedMarkdown h3 {
+    color: #f0f6fc !important;
+    font-size: 18px !important;
+    font-weight: 600 !important;
+    margin-top: 20px !important;
+    margin-bottom: 10px !important;
+}
+
+/* Remover Separadores Horizontais */
+.swagger-ui .info .markdown hr,
+.swagger-ui .info .renderedMarkdown hr,
+.swagger-ui .info hr {
+    display: none !important;
+}
+
+/* Descrições Gerais e Listas */
+.swagger-ui .info p,
+.swagger-ui .info li,
+.swagger-ui .markdown p,
+.swagger-ui .markdown li,
+.swagger-ui .renderedMarkdown p,
+.swagger-ui .renderedMarkdown li {
+    color: #c9d1d9 !important;
+    line-height: 1.6 !important;
+}
+
+
+/* ============================================================================
+   5. GRUPOS E TAGS (Pastas de Endpoints)
+   ============================================================================ */
+
+/* Container da Tag com Separador */
+.swagger-ui .opblock-tag-section {
+    border-bottom: 1px solid #30363d !important;
+    margin-bottom: 25px !important;
+    padding-bottom: 15px !important;
+}
+
+/* Efeito Hover na Pasta */
+.swagger-ui .opblock-tag-section:hover {
+    border-bottom-color: #8b949e !important;
+    transition: border-color 0.3s ease;
+}
+
+/* Nome da Tag (Título do Grupo) */
+.swagger-ui .opblock-tag {
+    color: #f0f6fc !important;
+    font-size: 20px !important;
+    font-weight: 600 !important;
+    margin-bottom: 0 !important;
+    padding: 10px 0 !important;
+    border: none !important;
+}
+
+/* Descrição da Tag */
+.swagger-ui .opblock-tag small {
+    color: #c9d1d9 !important;
+    font-size: 14px !important;
+    font-weight: 400 !important;
+}
+
+
+/* ============================================================================
+   6. ENDPOINTS
+   ============================================================================ */
+
+/* Container do Endpoint */
+.swagger-ui .opblock {
+    background: #161b22 !important;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.5) !important;
+    margin-bottom: 10px !important;
+    border: 1px solid #30363d !important;
+}
+
+/* Cabeçalho do Endpoint */
+.swagger-ui .opblock .opblock-section-header {
+    background: #0d1117 !important;
+    border-bottom: 1px solid #30363d !important;
+}
+
+/* Hover no Endpoint */
+.swagger-ui .opblock .opblock-summary:hover { 
+    background: rgba(110, 118, 129, 0.1) !important; 
+}
+
+/* Rota do Endpoint (Path) */
+.swagger-ui .opblock .opblock-summary-path,
+.swagger-ui .opblock .opblock-summary-path span,
+.swagger-ui .opblock .opblock-summary-path a {
+    color: #ffffff !important;
+    font-weight: 500 !important;
+}
+
+/* Descrição Resumida do Endpoint */
+.swagger-ui .opblock .opblock-summary-description {
+    color: #c9d1d9 !important;
+}
+
+/* Descrições Dentro do Endpoint Aberto */
+.swagger-ui .opblock-description-wrapper p,
+.swagger-ui .opblock-description-wrapper li,
+.swagger-ui .opblock-description p,
+.swagger-ui .opblock-description li,
+.swagger-ui .parameters-col_description p,
+.swagger-ui .parameters-col_description li,
+.swagger-ui .response-col_description,
+.swagger-ui .opblock-body p,
+.swagger-ui .opblock-body li,
+.swagger-ui .opblock-body section.opblock-section-header div {
+    color: #c9d1d9 !important;
+}
+
+/* Textos em Negrito Dentro dos Endpoints */
+.swagger-ui .opblock-body strong,
+.swagger-ui .renderedMarkdown strong {
+    color: #ffffff !important;
+    font-weight: 600 !important;
+}
+
+
+/* ============================================================================
+   7. FORMULÁRIOS E INPUTS
+   ============================================================================ */
+
+.swagger-ui select,
+.swagger-ui input[type=text],
+.swagger-ui input[type=password],
+.swagger-ui input[type=search],
+.swagger-ui textarea {
+    background-color: #0d1117 !important;
+    color: #f0f6fc !important;
+    border: 1px solid #30363d !important;
+    border-radius: 6px !important;
+}
+
+.swagger-ui select:focus,
+.swagger-ui input:focus,
+.swagger-ui textarea:focus {
+    border-color: #58a6ff !important;
+    outline: none !important;
+}
+
+/* Blocos de Código */
+.swagger-ui .highlight-code,
+.swagger-ui .microlight {
+    background-color: #0d1117 !important;
+    border: 1px solid #30363d !important;
+    color: #f0f6fc !important;
+}
+
+/* Ícones */
+.swagger-ui svg {
+    fill: #8b949e !important;
+}
+
+/* Botões */
+.swagger-ui .btn {
+    color: #f0f6fc !important;
+    background-color: #21262d !important;
+    border: 1px solid #30363d !important;
+    border-radius: 6px !important;
+}
+
+.swagger-ui .btn:hover {
+    background-color: #30363d !important;
+}
+
+.swagger-ui .btn.authorize {
+    color: #238636 !important;
+    border-color: #238636 !important;
+}
+
+.swagger-ui .btn.authorize svg {
+    fill: #238636 !important;
+}
+
+.swagger-ui .btn.execute {
+    background-color: #238636 !important;
+    color: #ffffff !important;
+    border-color: #238636 !important;
+}
+
+
+/* ============================================================================
+   8. MÉTODOS HTTP (Cores Semânticas)
+   ============================================================================ */
+
+/* GET - Azul */
+.swagger-ui .opblock.opblock-get { 
+    border-color: #61affe !important; 
+}
+.swagger-ui .opblock.opblock-get .opblock-summary-method { 
+    background: #61affe !important; 
+    color: #fff !important; 
+}
+
+/* POST - Verde */
+.swagger-ui .opblock.opblock-post { 
+    border-color: #49cc90 !important; 
+}
+.swagger-ui .opblock.opblock-post .opblock-summary-method { 
+    background: #49cc90 !important; 
+    color: #fff !important; 
+}
+
+/* PUT - Laranja */
+.swagger-ui .opblock.opblock-put { 
+    border-color: #fca130 !important; 
+}
+.swagger-ui .opblock.opblock-put .opblock-summary-method { 
+    background: #fca130 !important; 
+    color: #fff !important; 
+}
+
+/* DELETE - Vermelho */
+.swagger-ui .opblock.opblock-delete { 
+    border-color: #f93e3e !important; 
+}
+.swagger-ui .opblock.opblock-delete .opblock-summary-method { 
+    background: #f93e3e !important; 
+    color: #fff !important; 
+}
+
+/* PATCH - Ciano */
+.swagger-ui .opblock.opblock-patch { 
+    border-color: #50e3c2 !important; 
+}
+.swagger-ui .opblock.opblock-patch .opblock-summary-method { 
+    background: #50e3c2 !important; 
+    color: #111 !important; 
+}
+
+
+/* ============================================================================
+   9. TABELAS E SCHEMAS
+   ============================================================================ */
+
+/* Tabelas */
+.swagger-ui table {
+    background-color: #0d1117 !important;
+    border: 1px solid #30363d !important;
+}
+
+.swagger-ui table thead tr th,
+.swagger-ui table thead tr td {
+    background-color: #161b22 !important;
+    color: #f0f6fc !important;
+    border-bottom: 1px solid #30363d !important;
+}
+
+.swagger-ui table tbody tr td {
+    background-color: #0d1117 !important;
+    color: #c9d1d9 !important;
+    border-bottom: 1px solid #21262d !important;
+}
+
+/* Responses */
+.swagger-ui .responses-inner h4,
+.swagger-ui .responses-inner h5 {
+    color: #f0f6fc !important;
+}
+
+.swagger-ui .response-col_status {
+    color: #f0f6fc !important;
+}
+
+.swagger-ui .response-col_description {
+    color: #c9d1d9 !important;
+}
+
+/* Models/Schemas */
+.swagger-ui section.models {
+    border-top: 1px solid #30363d !important;
+    background-color: #0d1117 !important;
+}
+
+.swagger-ui section.models .model-container {
+    background-color: #161b22 !important;
+    border: 1px solid #30363d !important;
+}
+
+
+/* ============================================================================
+   10. UTILITÁRIOS
+   ============================================================================ */
+
+/* Scrollbar Customizada */
+.swagger-ui ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+.swagger-ui ::-webkit-scrollbar-track {
+    background: #0d1117;
+}
+
+.swagger-ui ::-webkit-scrollbar-thumb {
+    background: #30363d;
+    border-radius: 5px;
+}
+
+.swagger-ui ::-webkit-scrollbar-thumb:hover {
+    background: #484f58;
+}
