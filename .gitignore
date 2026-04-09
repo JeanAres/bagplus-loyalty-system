@@ -1,34 +1,152 @@
-# Python
+# ============================================================================
+# BAG+ LOYALTY SYSTEM - GITIGNORE
+# ============================================================================
+
+# ============================================================================
+# PYTHON / BACKEND
+# ============================================================================
+
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
-*.so
-.Python
+
+# Virtual environments
 venv/
 env/
-*.egg-info/
+ENV/
+.venv
+
+# Distribution / packaging
 dist/
 build/
+*.egg-info/
 
-# Database
-*.db
-*.sqlite
-*.sqlite3
+# ============================================================================
+# STORAGE (Arquivos Gerados)
+# ============================================================================
 
-# Environment
-.env
-.env.local
+# QR Codes gerados
+storage/qrcodes/csv/*.csv
+storage/qrcodes/pdf/*.pdf
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
+# Manter apenas o controle de sequência
+!storage/qrcodes/ultimo_id.txt
+
+# Exportações CSV
+storage/exports/*.csv
+
+# ============================================================================
+# BANCO DE DADOS
+# ============================================================================
+
+# SQLite databases
+services/backend/data/*.db
+services/backend/data/*.db-journal
+services/backend/data/*.db-wal
+services/backend/data/*.db-shm
+
+# ============================================================================
+# FRONTEND / NODE
+# ============================================================================
+
+# Dependencies
+apps/*/node_modules/
+apps/shared/node_modules/
+node_modules/
+
+# Production builds
+apps/*/dist/
+apps/*/build/
+apps/*/.next/
+apps/*/out/
+
+# Environment files (frontend)
+apps/*/.env.local
+apps/*/.env.development.local
+apps/*/.env.test.local
+apps/*/.env.production.local
+
+# ============================================================================
+# LOGS E TEMPORÁRIOS
+# ============================================================================
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # OS
 .DS_Store
 Thumbs.db
 
-# QR Codes gerados (arquivos temporários de produção)
-qrcodes/
+# ============================================================================
+# IDE / EDITORS
+# ============================================================================
+
+# VSCode
+.vscode/
+*.code-workspace
+
+# JetBrains (PyCharm, WebStorm, etc)
+.idea/
+*.iml
+
+# Sublime
+*.sublime-project
+*.sublime-workspace
+
+# ============================================================================
+# AMBIENTE E SECRETS
+# ============================================================================
+
+# Environment variables (backend)
+services/backend/.env
+.env
+
+# Secrets
+*.pem
+*.key
+*.cert
+
+# ============================================================================
+# TESTES E COVERAGE
+# ============================================================================
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+coverage/
+*.cover
+
+# Pytest
+.pytest_cache/
+
+# ============================================================================
+# DOCKER (Futuro)
+# ============================================================================
+
+# Docker
+*.env.docker
+docker-compose.override.yml
+
+# ============================================================================
+# MOBILE (React Native - Futuro)
+# ============================================================================
+
+# React Native
+apps/cliente/mobile/.expo/
+apps/cliente/mobile/.expo-shared/
+apps/cliente/mobile/android/app/build/
+apps/cliente/mobile/ios/Pods/
+
+# ============================================================================
+# KEEP FOLDERS
+# ============================================================================
+
+# Manter estrutura vazia
+!storage/qrcodes/csv/.gitkeep
+!storage/qrcodes/pdf/.gitkeep
+!storage/exports/.gitkeep

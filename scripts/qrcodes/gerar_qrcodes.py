@@ -10,7 +10,7 @@ from reportlab.lib.units import cm
 from reportlab.lib.utils import ImageReader
 from io import BytesIO
 
-load_dotenv('../backend/.env')
+load_dotenv('../../services/backend/.env')
 
 SECRET_KEY = os.getenv('SECRET_KEY')
 
@@ -18,7 +18,7 @@ if not SECRET_KEY:
     raise Exception("ERRO: SECRET_KEY não encontrada no arquivo .env")
 
 # Arquivo de controle de sequência
-CONTROLE_SEQUENCIA = '../qrcodes/ultimo_id.txt'
+CONTROLE_SEQUENCIA = '../../storage/qrcodes/ultimo_id.txt'
 
 def ler_ultimo_id():
     """Lê o último ID gerado do arquivo de controle"""
@@ -29,7 +29,7 @@ def ler_ultimo_id():
 
 def salvar_ultimo_id(ultimo_id):
     """Salva o último ID gerado no arquivo de controle"""
-    os.makedirs('../qrcodes', exist_ok=True)
+    os.makedirs('../../storage/qrcodes', exist_ok=True)
     with open(CONTROLE_SEQUENCIA, 'w', encoding='utf-8') as f:
         f.write(str(ultimo_id))
 
@@ -56,7 +56,7 @@ def gerar_qrcode_memoria(conteudo):
 def gerar_pdf_grid(inicio, fim, data_criacao):
     """Gera PDF com grid de QR Codes direto da memória (sem arquivos PNG)"""
     
-    pdf_path = f"../qrcodes/lote_{inicio:05d}-{fim:05d}_IMPRESSAO.pdf"
+    pdf_path = f"../../storage/qrcodes/pdf/lote_{inicio:05d}-{fim:05d}_IMPRESSAO.pdf"
     
     # Configurações do PDF
     c = canvas.Canvas(pdf_path, pagesize=A4)
@@ -135,7 +135,8 @@ def gerar_lote(quantidade, data_criacao=None):
     fim = inicio + quantidade - 1
     
     # Criar pastas se não existirem
-    os.makedirs("../qrcodes", exist_ok=True)
+    os.makedirs("../../storage/qrcodes/csv", exist_ok=True)
+    os.makedirs("../../storage/qrcodes/pdf", exist_ok=True)
     
     # Lista para CSV
     sacolas = []
@@ -178,7 +179,7 @@ def gerar_lote(quantidade, data_criacao=None):
             print(f"✅ Processado até: {sacola_id}")
     
     # Salvar CSV
-    csv_path = f"../qrcodes/lote_{inicio:05d}-{fim:05d}.csv"
+    csv_path = f"../../storage/qrcodes/csv/lote_{inicio:05d}-{fim:05d}.csv"
     with open(csv_path, 'w', newline='', encoding='utf-8') as f:
         writer = csv.DictWriter(f, fieldnames=['id', 'data_criacao', 'checksum', 'qr_content'])
         writer.writeheader()
@@ -195,10 +196,10 @@ def gerar_lote(quantidade, data_criacao=None):
     print(f"\n{'='*60}")
     print(f"Controle atualizado: último ID = BAG-{fim:05d}")
     print(f"\nCONCLUÍDO! {len(sacolas)} QR Codes processados com sucesso!")
-    print(f"Localização: ../qrcodes/")
+    print(f"Localização: ../../storage/qrcodes/")
     print(f"\nArquivos gerados:")
-    print(f"   - CSV com dados: lote_{inicio:05d}-{fim:05d}.csv")
-    print(f"   - PDF para gráfica: lote_{inicio:05d}-{fim:05d}_IMPRESSAO.pdf")
+    print(f"   - CSV com dados: csv/lote_{inicio:05d}-{fim:05d}.csv")
+    print(f"   - PDF para gráfica: pdf/lote_{inicio:05d}-{fim:05d}_IMPRESSAO.pdf")
     print(f"   - Controle de ID: ultimo_id.txt")
     print(f"{'='*60}\n")
 

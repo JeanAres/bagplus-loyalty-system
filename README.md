@@ -92,25 +92,27 @@ Sistema completo de gerenciamento de sacolas reutilizáveis com programa de reco
 git clone https://github.com/JeanAres/bagplus-loyalty-system.git
 cd bagplus-loyalty-system
 
-# 2. Criar ambiente virtual Python
+# 2. Navegar para backend
+cd services/backend
+
+# 3. Criar ambiente virtual Python
 python -m venv venv
 
-# 3. Ativar ambiente virtual
+# 4. Ativar ambiente virtual
 # Windows:
 .\venv\Scripts\Activate.ps1
 # Linux/Mac:
 source venv/bin/activate
 
-# 4. Instalar dependências
-cd backend
+# 5. Instalar dependências
 pip install -r requirements.txt
 
-# 5. Configurar variáveis de ambiente
+# 6. Configurar variáveis de ambiente
 # Copiar .env.example para .env e configurar SECRET_KEY
 cp .env.example .env
 notepad .env  # Adicionar SECRET_KEY única
 
-# 6. Iniciar servidor
+# 7. Iniciar servidor
 python run.py
 ```
 
@@ -222,64 +224,71 @@ Authorization: Bearer eyJ...
 ---
 
 ## Estrutura do Projeto
-```
+````
 bagplus-loyalty-system/
-├── backend/                    # API FastAPI
-│   ├── app/                   # Aplicação principal (arquitetura modular)
-│   │   ├── main.py           # Configuração FastAPI e routers
-│   │   ├── routers/          # Endpoints da API
-│   │   │   ├── admin/       # Endpoints administrativos (9 módulos)
-│   │   │   │   ├── lotes.py      # Gestão de lotes (3 endpoints)
-│   │   │   │   ├── suspensao.py  # Suspensão de clientes (3 endpoints)
-│   │   │   │   ├── alertas.py    # Sistema de alertas (2 endpoints)
-│   │   │   │   ├── relatorios.py # Dashboard e relatórios (4 endpoints)
-│   │   │   │   ├── sacolas.py    # Gestão avançada (6 endpoints)
-│   │   │   │   ├── exportar.py   # Exportação CSV (3 endpoints)
-│   │   │   │   ├── usuarios.py   # Gestão de usuários (5 endpoints)
-│   │   │   │   ├── auditoria.py  # Logs de auditoria (1 endpoint)
-│   │   │   │   └── notificacoes.py # Gestão de notificações (3 endpoints)
-│   │   │   ├── clientes.py       # Endpoints públicos (8 endpoints)
-│   │   │   ├── sacolas.py        # Endpoints públicos (7 endpoints)
-│   │   │   ├── notificacoes.py   # Notificações públicas (4 endpoints)
-│   │   │   └── auth.py           # Autenticação JWT (3 endpoints)
-│   │   ├── core/             # Lógica central e utilitários
-│   │   │   ├── security.py   # JWT, bcrypt, tokens
-│   │   │   ├── audit.py      # Sistema de logs de auditoria
-│   │   │   ├── helpers.py    # Funções auxiliares
-│   │   │   └── notifications.py # Sistema de notificações automáticas
-│   │   ├── db/               # Camada de dados
-│   │   │   ├── models.py     # Modelos do banco (8 tabelas)
-│   │   │   └── session.py    # Configuração SQLAlchemy
-│   │   └── middleware/       # Middlewares personalizados
-│   │       └── auth.py       # Autenticação JWT e verificação de roles
-│   ├── docs/                  # Documentação e assets
-│   │   └── swagger/          # Configuração Swagger UI customizado
-│   │       ├── config/       # Setup e metadados da API
-│   │       │   ├── setup.py      # Configuração customizada
-│   │       │   └── metadata.py   # Tags e descrições
-│   │       └── styles/       # Tema dark profissional
-│   │           └── dark.css      # GitHub Dark theme
-│   ├── scripts/               # Scripts auxiliares
-│   │   └── dev_setup.py      # Utilitários de desenvolvimento
-│   ├── data/                  # Banco de dados
-│   │   └── bagplus.db        # SQLite database
-│   ├── run.py                # Launcher principal do servidor
-│   ├── requirements.txt      # Dependências Python
-│   └── .env                  # Variáveis de ambiente
-├── scripts/                   # Scripts utilitários
-│   ├── gerar_qrcodes.py      # Geração em massa de QR Codes
-│   ├── limpar_qrcodes.py     # Limpeza de QR Codes antigos
-│   └── seed_data.py          # Popular banco com dados de teste
-├── qrcodes/                   # QR Codes gerados (ignorado no Git)
-├── docs/                      # Documentação geral
+├── services/                   # Backend
+│   └── backend/               # API FastAPI
+│       ├── app/              # Aplicação modular
+│       │   ├── main.py       # Configuração FastAPI
+│       │   ├── routers/      # Endpoints da API
+│       │   │   ├── admin/   # Endpoints administrativos (9 módulos)
+│       │   │   │   ├── lotes.py
+│       │   │   │   ├── suspensao.py
+│       │   │   │   ├── alertas.py
+│       │   │   │   ├── relatorios.py
+│       │   │   │   ├── sacolas.py
+│       │   │   │   ├── exportar.py
+│       │   │   │   ├── usuarios.py
+│       │   │   │   ├── auditoria.py
+│       │   │   │   └── notificacoes.py
+│       │   │   ├── clientes.py
+│       │   │   ├── sacolas.py
+│       │   │   ├── notificacoes.py
+│       │   │   └── auth.py
+│       │   ├── core/         # Lógica central
+│       │   │   ├── security.py
+│       │   │   ├── audit.py
+│       │   │   ├── helpers.py
+│       │   │   └── notifications.py
+│       │   ├── db/           # Banco de dados
+│       │   │   ├── models.py
+│       │   │   └── session.py
+│       │   └── middleware/   # Middlewares
+│       │       └── auth.py
+│       ├── docs/             # Documentação Swagger
+│       │   └── swagger/
+│       │       ├── config/
+│       │       └── styles/
+│       ├── scripts/          # Scripts de desenvolvimento
+│       │   └── dev_setup.py
+│       ├── data/             # Banco de dados
+│       │   └── bagplus.db
+│       ├── run.py            # Launcher principal
+│       ├── requirements.txt
+│       └── .env
+├── apps/                      # Frontends (preparado)
+│   └── shared/               # Componentes compartilhados
+├── storage/                   # Arquivos gerados
+│   └── qrcodes/
+│       ├── csv/              # CSVs dos lotes
+│       ├── pdf/              # PDFs para impressão
+│       └── ultimo_id.txt     # Controle de sequência
+├── scripts/                   # Scripts auxiliares
+│   ├── qrcodes/
+│   │   ├── gerar_qrcodes.py
+│   │   └── limpar_qrcodes.py
+│   └── database/
+│       └── seed_data.py
+├── infra/                    # Infraestrutura
+│   └── database/
+├── docs/                     # Documentação geral
 │   └── SCANNER-REMOTE-KEYBOARD.md
-├── frontend-caixa/            # Interface web (futuro)
-├── tests/                     # Testes automatizados (futuro)
-├── README.md                  # Este arquivo
-├── PROPOSTA.md               # Proposta de negócio
-├── CONTRIBUTING.md           # Guia de contribuição
-└── .gitignore                # Arquivos ignorados
-```
+├── tests/                    # Testes (preparado)
+├── README.md
+├── PROPOSTA.md
+├── CONTRIBUTING.md
+└── .gitignore
+````
 
 ---
 
@@ -839,6 +848,7 @@ gerar_lote(quantidade=5000)  # Alterar quantidade desejada
 
 ### 2. Executar Script
 ```bash
+cd scripts/qrcodes
 python gerar_qrcodes.py
 ```
 
@@ -846,10 +856,12 @@ python gerar_qrcodes.py
 
 ### 3. Arquivos Gerados
 ```
-qrcodes/
-├── lote_00001-05000.csv              # Importar no sistema
-├── lote_00001-05000_IMPRESSAO.pdf    # Enviar para gráfica
-└── ultimo_id.txt                     # Controle automático
+storage/qrcodes/
+├── csv/
+│   └── lote_00001-05000.csv
+├── pdf/
+│   └── lote_00001-05000_IMPRESSAO.pdf
+└── ultimo_id.txt
 ```
 
 ### 4. Importar no Sistema
@@ -894,7 +906,7 @@ password: DEV_ADMIN_PASSWORD
 
 #### 2. Gerar QR Codes
 ```bash
-cd scripts
+cd scripts/qrcodes
 python gerar_qrcodes.py
 # Confirmar com S
 # Resultado: CSV + PDF gerados
@@ -1061,4 +1073,4 @@ Este é um projeto comercial proprietário. O código está disponível para ava
 
 ---
 
-**Versão:** v0.90-beta | **52 endpoints funcionais** | **Atualizado:** 08/04/2026 | **Arquitetura:** Modular
+**Versão:** v0.90-beta | **52 endpoints funcionais** | **Atualizado:** 08/04/2026 | **Arquitetura:** Modular Monorepo
