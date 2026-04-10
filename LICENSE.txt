@@ -7,26 +7,45 @@ Copyright © 2026 Jean Soares
 Este software e toda a documentação associada ("Bag+ Sistema de Fidelização") 
 são propriedade exclusiva de Jean Soares.
 
+Este projeto inclui todos os componentes da arquitetura monorepo:
+- Backend (API FastAPI em services/backend/)
+- Frontends (apps/caixa, apps/gestor, apps/admin, apps/cliente)
+- Infraestrutura (infra/)
+- Scripts e documentação
+
 ## Restrições de Uso
 
 O uso deste software é estritamente limitado. SEM AUTORIZAÇÃO PRÉVIA POR ESCRITO, 
 É EXPRESSAMENTE PROIBIDO:
 
- Uso comercial ou em ambiente de produção
- Distribuição do código-fonte ou binários
- Modificação para uso comercial
- Venda, aluguel ou sublicenciamento
- Implementação em estabelecimentos comerciais
- Uso para gerar receita direta ou indireta
+✗ Uso comercial ou em ambiente de produção
+✗ Distribuição do código-fonte ou binários (exceto via repositório oficial)
+✗ Modificação para uso comercial
+✗ Venda, aluguel ou sublicenciamento
+✗ Implementação em estabelecimentos comerciais
+✗ Uso para gerar receita direta ou indireta
+✗ Fork do repositório com finalidade comercial
 
 ## Uso Permitido
 
 Apenas os seguintes usos são permitidos sem licença comercial:
 
- Visualização do código para fins educacionais
- Avaliação técnica em processos seletivos
- Análise de portfólio profissional
- Demonstrações técnicas não comerciais
+✓ Visualização do código-fonte no GitHub para fins educacionais
+✓ Clone do repositório para estudo e aprendizado pessoal
+✓ Avaliação técnica em processos seletivos
+✓ Análise de portfólio profissional
+✓ Demonstrações técnicas não comerciais
+✓ Contribuições via Pull Request (que se tornam propriedade do autor)
+✓ Fork para fins educacionais (deve manter esta licença e créditos)
+
+## Repositório Público
+
+Este software está disponível publicamente no GitHub para fins de:
+- Demonstração de habilidades técnicas
+- Compartilhamento de conhecimento
+- Recrutamento e networking profissional
+
+A disponibilidade pública NÃO constitui licença de uso comercial.
 
 ## Licenciamento Comercial
 
@@ -39,20 +58,42 @@ implementação em:
 
 ### Para Licenciamento Comercial, Entre em Contato:
 
- **Email:** jean06soares@gmail.com
+📧 **Email:** jean06soares@gmail.com
+🌐 **GitHub:** https://github.com/JeanAres/bagplus-loyalty-system
 
 O licenciamento comercial inclui:
 - Direito de uso em ambiente de produção
-- Suporte técnico
+- Suporte técnico dedicado
 - Atualizações de segurança
-- Documentação completa
+- Documentação completa de implementação
 - Treinamento de operadores (opcional)
+- Customização para necessidades específicas (opcional)
+- Migração de dados (se aplicável)
+
+## Contribuições
+
+Contribuições via Pull Request são bem-vindas e apreciadas, desde que:
+- Sigam o guia CONTRIBUTING.md
+- Passem por revisão e aprovação
+- Mantenham a qualidade do código
+
+**IMPORTANTE:** Ao contribuir, você concorda que suas contribuições 
+se tornam parte deste software proprietário e seguem os mesmos termos 
+de licença.
 
 ## Direitos Autorais
 
 Todos os direitos autorais, marcas registradas e outros direitos de 
 propriedade intelectual relacionados ao software pertencem exclusivamente 
 a Jean Soares.
+
+Isso inclui, mas não se limita a:
+- Código-fonte (Python, JavaScript, SQL)
+- Arquitetura e design do sistema
+- Documentação técnica e comercial
+- Interface do usuário e experiência
+- Algoritmos e lógica de negócio
+- Nome "Bag+" e identidade visual
 
 ## Garantias e Responsabilidades
 
@@ -67,25 +108,60 @@ DECORRENTES DO USO OU INCAPACIDADE DE USO DESTE SOFTWARE.
 ## Violação de Licença
 
 O uso não autorizado, cópia, modificação ou distribuição deste software 
-constitui violação desta licença e pode resultar em:
+para fins comerciais constitui violação desta licença e pode resultar em:
 - Ação legal civil
-- Reivindicação de danos
-- Medidas cautelares
+- Reivindicação de danos e lucros cessantes
+- Medidas cautelares e inibitórias
+- Remoção forçada do software de produção
 
 ## Jurisdição
 
 Esta licença é regida pelas leis da República Federativa do Brasil.
+Quaisquer disputas serão resolvidas nos tribunais brasileiros.
 
 ## Modificações da Licença
 
 Jean Soares reserva-se o direito de modificar os termos desta licença 
-a qualquer momento. Usuários serão notificados de mudanças significativas.
+a qualquer momento. Usuários serão notificados de mudanças significativas 
+através de:
+- Atualização no repositório GitHub
+- Comunicado no README.md
+- Incremento de versão da licença
+
+## Política de Privacidade
+
+Este software coleta e processa dados pessoais (CPF, nome, telefone) 
+em conformidade com a Lei Geral de Proteção de Dados (LGPD - Lei 13.709/2018).
+
+Empresas que licenciarem este software são responsáveis por:
+- Obter consentimento dos titulares dos dados
+- Implementar medidas de segurança adequadas
+- Cumprir todas as obrigações da LGPD
+
+## Versionamento da Licença
+
+**Versão:** 2.0  
+**Última atualização:** Abril de 2026  
+**Mudanças nesta versão:**
+- Atualização para arquitetura monorepo
+- Clarificação sobre repositório público
+- Adição de seção sobre contribuições
+- Inclusão de nota sobre LGPD
 
 ---
 
 **TODOS OS DIREITOS RESERVADOS.**
 
 Para dúvidas sobre esta licença ou para solicitar permissões especiais, 
-entre em contato: jean06soares@gmail.com
+entre em contato:
 
-Última atualização: Março de 2026
+📧 **Email:** jean06soares@gmail.com  
+🐙 **GitHub:** https://github.com/JeanAres  
+💼 **LinkedIn:** www.linkedin.com/in/jean-soares1312
+
+---
+
+**Bag+ - Sistema de Fidelização Sustentável**  
+*Sua sacola vale mais.*
+
+Copyright © 2026 Jean Soares. Todos os direitos reservados.
