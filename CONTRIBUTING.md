@@ -11,63 +11,289 @@ Este é um **monorepo** que contém:
 
 ---
 
+## Ambientes
+
+### **Produção**
+- **URL:** https://api.bagplus.com.br/docs
+- **Branch:** `main`
+- **Banco:** bagplus_prod.db (dados reais)
+- **Deploy:** Manual após validação em staging
+- **Container:** bagplus_backend_prod
+
+### **Staging**
+- **URL:** https://staging.bagplus.com.br/docs
+- **Branch:** `dev`
+- **Banco:** bagplus_staging.db (dados fake para testes)
+- **Deploy:** Manual após merge em dev
+- **Container:** bagplus_backend_staging
+
+### **Local**
+- **URL:** http://localhost:8000/docs
+- **Branch:** `dev`
+- **Banco:** bagplus.db (local)
+- **Container:** bagplus_backend_local (opcional)
+
+---
+
 ## Estratégia de Branches
 
 ### Branches Principais
 
-- **`main`**: Código em produção (releases estáveis)
-- **`dev`**: Desenvolvimento ativo (branch padrão)
+- **`main`**: Código em produção
+  - Deploy: https://api.bagplus.com.br
+  - Sempre estável e testado
+  - Apenas código validado em staging
+  - Merge apenas via Pull Request
+
+- **`dev`**: Desenvolvimento ativo
+  - Deploy: https://staging.bagplus.com.br
+  - Branch padrão para desenvolvimento
+  - Testes e validação antes de produção
+  - Aceita features via Pull Request
 
 ### Fluxo de Trabalho
 
-1. Todo desenvolvimento acontece em `dev`
-2. Features são desenvolvidas em branches `feature/*`
-3. Merge para `dev` via Pull Request
-4. Quando `dev` estiver estável → merge para `main` (release)
+```
+1. Desenvolver em feature/* branch
+   ↓
+2. PR para dev
+   ↓
+3. Deploy em staging (teste com dados fake)
+   ↓
+4. Validação em staging
+   ↓
+5. PR de dev para main
+   ↓
+6. Deploy em produção (dados reais)
+```
 
-**IMPORTANTE:** Atualmente estamos trabalhando 100% em `dev`. A branch `main` só receberá merge quando o backend estiver 100% completo (v1.0-backend).
+**IMPORTANTE:** 
+- Todo desenvolvimento começa em `dev`
+- Produção (`main`) só recebe código testado em staging
+- NUNCA fazer commit direto em `main`
 
 ---
 
 ## Fluxo de Contribuição
 
-1. **Clone o repositório**
-   ```bash
-   git clone https://github.com/JeanAres/bagplus-loyalty-system.git
-   cd bagplus-loyalty-system
-   ```
+### 1. **Clone o repositório**
+```bash
+git clone https://github.com/JeanAres/bagplus-loyalty-system.git
+cd bagplus-loyalty-system
+```
 
-2. **Certifique-se de estar em `dev`**
-   ```bash
-   git checkout dev
-   git pull origin dev
-   ```
+### 2. **Certifique-se de estar em `dev`**
+```bash
+git checkout dev
+git pull origin dev
+```
 
-3. **Crie uma branch para sua feature**
-   ```bash
-   git checkout -b feature/MinhaFeature
-   ```
+### 3. **Crie uma branch para sua feature**
+```bash
+git checkout -b feature/MinhaFeature
+```
 
-4. **Faça suas alterações**
-   - Siga os padrões de código
-   - Teste suas mudanças
-   - Documente quando necessário
+### 4. **Faça suas alterações**
+- Siga os padrões de código
+- Teste suas mudanças localmente
+- Documente quando necessário
 
-5. **Commit seguindo convenções**
-   ```bash
-   git add .
-   git commit -m "feat(backend): adiciona validação de CPF"
-   ```
+### 5. **Commit seguindo convenções**
+```bash
+git add .
+git commit -m "feat(backend): adiciona validação de CPF"
+```
 
-6. **Push para o repositório**
-   ```bash
-   git push origin feature/MinhaFeature
-   ```
+### 6. **Push para o repositório**
+```bash
+git push origin feature/MinhaFeature
+```
 
-7. **Abra um Pull Request**
-   - Base: `dev` (não `main`)
-   - Descreva claramente as mudanças
-   - Referencie issues relacionadas
+### 7. **Abra um Pull Request**
+- Base: `dev` (não `main`)
+- Descreva claramente as mudanças
+- Referencie issues relacionadas
+- Aguarde review
+
+### 8. **Após merge em dev: Deploy em Staging**
+```bash
+# SSH no servidor
+ssh -i <sua-chave>.pem <usuario>@<ip-servidor>
+
+# Atualizar código
+cd bagplus-loyalty-system
+git checkout dev
+git pull origin dev
+
+# Rebuild container de staging
+sudo docker-compose up -d --build backend-staging
+
+# Verificar logs
+sudo docker-compose logs -f backend-staging
+```
+
+### 9. **Testar em staging**
+- Acessar: https://staging.bagplus.com.br/docs
+- Testar funcionalidade nova com dados fake
+- Verificar se não quebrou nada
+
+### 10. **Se OK: Deploy em Produção**
+```bash
+# No seu PC: Merge dev → main
+git checkout main
+git pull origin main
+git merge dev
+git push origin main
+
+# SSH no servidor
+ssh -i <sua-chave>.pem <usuario>@<ip-servidor>
+
+# Atualizar código
+cd bagplus-loyalty-system
+git checkout main
+git pull origin main
+
+# Rebuild container de produção
+sudo docker-compose up -d --build backend-prod
+
+# Verificar logs
+sudo docker-compose logs -f backend-prod
+```
+
+---
+
+## Deploy
+
+### Deploy em Staging
+
+**Quando:** Após merge de feature em `dev`
+
+**Passos:**
+1. SSH no servidor AWS
+2. Ir para pasta do projeto
+3. Atualizar branch `dev`
+4. Rebuild container de staging
+5. Testar no Swagger de staging
+
+**Comandos:**
+```bash
+ssh -i <sua-chave>.pem <usuario>@<ip-servidor>
+cd bagplus-loyalty-system
+git checkout dev
+git pull origin dev
+sudo docker-compose up -d --build backend-staging
+```
+
+**Verificar:**
+```bash
+sudo docker-compose ps
+sudo docker-compose logs backend-staging
+```
+
+**Testar:**
+- URL: https://staging.bagplus.com.br/docs
+- Usar dados fake
+- Verificar novos endpoints
+- Testar fluxos completos
+
+---
+
+### Deploy em Produção
+
+**Quando:** Após validação bem-sucedida em staging
+
+**Pré-requisitos:**
+- Testado em staging
+- Sem erros nos logs
+- Aprovação do time
+- Dados fake funcionaram
+
+**Passos:**
+
+#### No seu PC:
+```bash
+# Certifique-se que dev está atualizado
+git checkout dev
+git pull origin dev
+
+# Merge para main
+git checkout main
+git pull origin main
+git merge dev
+
+# Resolver conflitos se houver
+# Testar localmente se possível
+
+# Push para GitHub
+git push origin main
+```
+
+#### No servidor AWS:
+```bash
+# SSH no servidor
+ssh -i <sua-chave>.pem <usuario>@<ip-servidor>
+
+# Ir para projeto
+cd bagplus-loyalty-system
+
+# Atualizar main
+git checkout main
+git pull origin main
+
+# Rebuild produção
+sudo docker-compose up -d --build backend-prod
+
+# Verificar logs
+sudo docker-compose logs -f backend-prod
+```
+
+**Verificar:**
+```bash
+# Status dos containers
+sudo docker-compose ps
+
+# Logs de produção
+sudo docker-compose logs backend-prod --tail=100
+
+# Logs de staging (não deve afetar)
+sudo docker-compose logs backend-staging --tail=50
+```
+
+**Testar:**
+- URL: https://api.bagplus.com.br/docs
+- Testar endpoints críticos
+- Verificar se staging ainda funciona
+- Monitorar por 5-10 minutos
+
+---
+
+### Rollback (Se algo der errado)
+
+**Se produção quebrou:**
+
+```bash
+# No seu PC
+git checkout main
+git log --oneline  # Ver commits recentes
+git revert <commit-hash-do-problema>
+git push origin main
+
+# No servidor
+ssh -i <sua-chave>.pem <usuario>@<ip-servidor>
+cd bagplus-loyalty-system
+git checkout main
+git pull origin main
+sudo docker-compose up -d --build backend-prod
+```
+
+**Ou voltar para versão anterior:**
+```bash
+# No servidor
+git checkout main
+git reset --hard <commit-hash-que-funcionava>
+git push origin main --force
+sudo docker-compose up -d --build backend-prod
+```
 
 ---
 
@@ -128,6 +354,7 @@ Este projeto segue o padrão **Conventional Commits**.
 - `docs` - Documentação geral
 - `readme` - Arquivo README
 - `roadmap` - Roadmap do projeto
+- `contributing` - Guia de contribuição
 
 ---
 
@@ -138,6 +365,7 @@ Este projeto segue o padrão **Conventional Commits**.
 git commit -m "feat(backend): implementa sistema de notificações"
 git commit -m "fix(api): corrige endpoint de exportação CSV"
 git commit -m "refactor(auth): simplifica middleware JWT"
+git commit -m "feat(backend): adiciona validação de CPF"
 
 # Frontend
 git commit -m "feat(caixa): adiciona tela de cadastro de cliente"
@@ -148,6 +376,7 @@ git commit -m "style(admin): aplica tema dark mode"
 git commit -m "chore(deps): atualiza dependencies do backend"
 git commit -m "ci(github): configura deploy automático"
 git commit -m "docs(contributing): atualiza guia de contribuição"
+git commit -m "build(docker): adiciona ambiente de staging"
 
 # Estrutura
 git commit -m "refactor: reestrutura projeto em monorepo enterprise-grade"
@@ -164,13 +393,17 @@ git commit -m "refactor: reestrutura projeto em monorepo enterprise-grade"
 - Imports organizados (padrão, terceiros, locais)
 
 ```python
-# Bom
+# Bom ✅
 from typing import Optional
 from fastapi import HTTPException
 from app.db.models import Cliente
 
 def criar_cliente(cpf: str, nome: str) -> Cliente:
     """Cria um novo cliente no sistema."""
+    ...
+
+# Ruim ❌
+def criar_cliente(cpf, nome):
     ...
 ```
 
@@ -199,9 +432,19 @@ Quando implementarmos testes:
 services/backend/
 ├── app/
 │   ├── routers/        # Novos endpoints aqui
+│   │   ├── admin/      # Endpoints administrativos
+│   │   ├── clientes.py
+│   │   ├── sacolas.py
+│   │   └── auth.py
 │   ├── core/           # Lógica de negócio
+│   │   ├── security.py
+│   │   ├── audit.py
+│   │   └── helpers.py
 │   ├── db/             # Models e sessão
+│   │   ├── models.py
+│   │   └── session.py
 │   └── middleware/     # Middleware customizado
+│       └── auth.py
 ```
 
 ### Frontend Caixa
@@ -225,6 +468,7 @@ apps/caixa/
 - [ ] Não quebra funcionalidades existentes
 - [ ] Testes passam (quando aplicável)
 - [ ] README/docs atualizados (se necessário)
+- [ ] Branch está atualizada com base
 
 ### Checklist do Autor
 
@@ -233,11 +477,13 @@ apps/caixa/
 - [ ] Removi console.logs/debugs
 - [ ] Atualizei documentação relevante
 - [ ] Branch está atualizada com `dev`
+- [ ] Não commitei arquivos sensíveis (.env, *.pem)
 
 ---
 
 ## Comandos Úteis
 
+### Git
 ```bash
 # Atualizar sua branch com dev
 git checkout dev
@@ -245,23 +491,82 @@ git pull origin dev
 git checkout feature/MinhaFeature
 git merge dev
 
-# Testar backend localmente
+# Ver histórico de commits
+git log --oneline --graph --all
+
+# Ver mudanças não commitadas
+git status
+git diff
+```
+
+### Backend Local
+```bash
+# Testar backend localmente (Python direto)
 cd services/backend
 python run.py
 
+# Testar backend localmente (Docker)
+docker-compose up backend
+
+# Ver logs
+docker-compose logs -f backend
+```
+
+### QR Codes
+```bash
 # Gerar QR Codes
 cd scripts/qrcodes
 python gerar_qrcodes.py
 
-# Ver estrutura do projeto
+# Limpar QR Codes antigos
+python limpar_qrcodes.py
+```
+
+### Docker
+```bash
+# Ver containers rodando
+docker-compose ps
+
+# Ver logs
+docker-compose logs backend-prod
+docker-compose logs backend-staging
+
+# Rebuild container específico
+sudo docker-compose up -d --build backend-staging
+sudo docker-compose up -d --build backend-prod
+
+# Entrar no container
+docker exec -it bagplus_backend_prod bash
+docker exec -it bagplus_backend_staging bash
+
+# Parar todos containers
+docker-compose down
+
+# Limpar containers e volumes
+docker-compose down -v
+docker system prune -a
+```
+
+### Utilitários
+```bash
+# Ver estrutura do projeto (Windows)
 tree /A
+
+# Ver estrutura do projeto (Linux/Mac)
+tree
+
+# Buscar texto em arquivos
+grep -r "texto" services/backend/
 ```
 
 ---
 
 ## Regras de Pull Request
 
-1. **Base branch:** Sempre `dev` (não `main`)
+### Geral
+1. **Base branch:** 
+   - Features → `dev`
+   - Releases → `main` (apenas de `dev`)
 2. **Título:** Claro e descritivo
 3. **Descrição:** Explicar O QUE e POR QUÊ
 4. **Screenshots:** Se mudanças visuais (frontend)
@@ -283,10 +588,17 @@ tree /A
 - [ ] Nova feature
 - [ ] Refatoração
 - [ ] Documentação
+- [ ] Deploy/Infraestrutura
 
 ## Como Testar
 1. [Passo 1]
 2. [Passo 2]
+3. [Passo 3]
+
+## Ambiente de Teste
+- [ ] Local
+- [ ] Staging
+- [ ] Produção (após staging)
 
 ## Screenshots (se aplicável)
 [Cole imagens aqui]
@@ -294,10 +606,54 @@ tree /A
 ## Checklist
 - [ ] Código segue convenções
 - [ ] Testei localmente
+- [ ] Testei em staging (se deploy)
 - [ ] Documentação atualizada
+- [ ] Não commitei arquivos sensíveis
 ```
 
 ---
 
-**Última atualização:** 08/04/2026  
-**Versão:** 2.0 (Atualizado para Monorepo)
+## Segurança
+
+### NUNCA Commitar:
+
+```bash
+ .env (variáveis de ambiente)
+ *.pem (chaves SSH)
+ *.key (chaves privadas)
+ *.db (bancos de dados com dados reais)
+ Credenciais de acesso
+ IPs de servidores
+ Senhas
+```
+
+### SEMPRE Commitar:
+
+```bash
+ .env.example (template sem valores reais)
+ README.md
+ CONTRIBUTING.md
+ requirements.txt
+ Dockerfile
+ docker-compose.yml (com variáveis genéricas)
+ Código-fonte
+ Documentação
+```
+
+### Verificar antes de Push:
+
+```bash
+# Ver o que será commitado
+git status
+
+# Ver conteúdo dos arquivos staged
+git diff --cached
+
+# Se commitou por engano
+git reset HEAD <arquivo>
+```
+
+---
+
+**Última atualização:** 11/04/2026  
+**Versão:** 3.0 (Atualizado com Deploy e Ambientes)

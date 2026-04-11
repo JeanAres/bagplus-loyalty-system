@@ -10,6 +10,59 @@ Sistema completo de gerenciamento de sacolas reutilizáveis com programa de reco
 
 ---
 
+## Ambientes Disponíveis
+
+### **Produção (Clientes)**
+```
+URL: https://api.bagplus.com.br/docs
+Servidor: AWS EC2 (São Paulo - sa-east-1)
+Banco: bagplus_prod.db (dados reais)
+Branch: main
+Status: 🟢 Online 24/7
+```
+
+### **Staging (Testes)**
+```
+URL: https://staging.bagplus.com.br/docs
+Servidor: AWS EC2 (São Paulo - sa-east-1)
+Banco: bagplus_staging.db (dados fake)
+Branch: dev
+Status: 🟢 Online 24/7
+```
+
+### **Local (Desenvolvimento)**
+```
+URL: http://localhost:8000/docs
+Banco: bagplus.db (local)
+Branch: dev
+Status: Quando rodando
+```
+
+---
+
+## Infraestrutura
+
+### **Servidor**
+- **Provedor:** Amazon Web Services (AWS)
+- **Região:** São Paulo (sa-east-1) - Compliance LGPD
+- **Tipo:** EC2 t2.micro (1GB RAM, 1 vCPU, 30GB SSD)
+- **SO:** Ubuntu 24.04 LTS
+
+### **Domínio**
+- **Provedor:** Registro.br
+- **Domínio:** bagplus.com.br
+
+### **SSL/HTTPS**
+- **Provedor:** Let's Encrypt (Certbot)
+- **Renovação:** Automática
+
+### **Containerização**
+- **Docker** - Isolamento de ambientes
+- **Docker Compose** - Orquestração
+- **Nginx** - Proxy reverso e SSL termination
+
+---
+
 ## Funcionalidades Implementadas
 
 ### Autenticação e Controle de Acesso
@@ -80,13 +133,44 @@ Sistema completo de gerenciamento de sacolas reutilizáveis com programa de reco
 
 ## Início Rápido
 
-### Pré-requisitos
+### Opção 1: Docker (Recomendado)
 
-- Python 3.8+
-- SQLite (já incluso no Python)
-- Navegador moderno (Chrome/Firefox/Edge)
+#### Pré-requisitos
+- Docker
+- Docker Compose
+- Git
 
-### Instalação
+#### Instalação
+```bash
+# 1. Clonar repositório
+git clone https://github.com/JeanAres/bagplus-loyalty-system.git
+cd bagplus-loyalty-system
+
+# 2. Criar arquivo .env (copiar do template)
+cp .env.example .env
+
+# 3. Editar .env e configurar SECRET_KEY e JWT_SECRET_KEY
+# Gerar chaves seguras com:
+openssl rand -hex 32
+
+# 4. Subir container
+docker-compose up -d
+
+# 5. Ver logs
+docker-compose logs -f backend
+```
+
+O servidor estará rodando em `http://localhost:8000`
+
+---
+
+### Opção 2: Python Direto
+
+#### Pré-requisitos
+- Python 3.11+
+- SQLite (incluso no Python)
+
+#### Instalação
 ```bash
 # 1. Clonar repositório
 git clone https://github.com/JeanAres/bagplus-loyalty-system.git
@@ -95,7 +179,7 @@ cd bagplus-loyalty-system
 # 2. Navegar para backend
 cd services/backend
 
-# 3. Criar ambiente virtual Python
+# 3. Criar ambiente virtual
 python -m venv venv
 
 # 4. Ativar ambiente virtual
@@ -108,9 +192,8 @@ source venv/bin/activate
 pip install -r requirements.txt
 
 # 6. Configurar variáveis de ambiente
-# Copiar .env.example para .env e configurar SECRET_KEY
 cp .env.example .env
-notepad .env  # Adicionar SECRET_KEY única
+# Editar .env e adicionar SECRET_KEY e JWT_SECRET_KEY
 
 # 7. Iniciar servidor
 python run.py
@@ -121,6 +204,104 @@ O servidor estará rodando em `http://localhost:8000`
 **Token JWT de desenvolvimento será exibido no console!**
 
 ---
+
+## Workflow de Deploy
+
+### **Desenvolvimento → Staging → Produção**
+
+```bash
+# ==========================================
+# FASE 1: DESENVOLVIMENTO LOCAL
+# ==========================================
+
+# 1. Criar feature nova
+git checkout dev
+# ... desenvolver código ...
+
+# 2. Testar localmente
+python run.py
+# Acessar: http://localhost:8000/docs
+
+# 3. Commit e push
+git add .
+git commit -m "feat: nova funcionalidade X"
+git push origin dev
+
+# ==========================================
+# FASE 2: DEPLOY EM STAGING (Testes)
+# ==========================================
+
+# 4. SSH no servidor AWS
+ssh -i <sua-chave>.pem <usuario>@<ip-servidor>
+
+# 5. Atualizar código
+cd bagplus-loyalty-system
+git checkout dev
+git pull origin dev
+
+# 6. Rebuild container de staging
+sudo docker-compose up -d --build backend-staging
+
+# 7. Testar em staging
+ Acessar: https://staging.bagplus.com.br/docs
+ Testar com dados FAKE
+
+# ==========================================
+# FASE 3: APROVAÇÃO PARA PRODUÇÃO
+# ==========================================
+
+# 8. Se staging OK, mergear para main
+git checkout main
+git merge dev
+git push origin main
+
+# ==========================================
+# FASE 4: DEPLOY EM PRODUÇÃO (Clientes)
+# ==========================================
+
+# 9. SSH no servidor AWS
+ssh -i <sua-chave>.pem <usuario>@<ip-servidor>
+
+# 10. Atualizar código
+cd bagplus-loyalty-system
+git checkout main
+git pull origin main
+
+# 11. Rebuild container de produção
+sudo docker-compose up -d --build backend-prod
+
+# 12. Verificar em produção
+ Acessar: https://api.bagplus.com.br/docs
+ Clientes podem usar!
+```
+
+---
+
+## 🐳 Comandos Docker Úteis
+
+```bash
+# Ver containers rodando
+docker-compose ps
+
+# Ver logs
+docker-compose logs backend           # Produção
+docker-compose logs backend-staging   # Staging
+
+# Parar containers
+docker-compose down
+
+# Rebuild completo
+docker-compose up -d --build
+
+# Entrar no container
+docker exec -it bagplus_backend_prod bash
+docker exec -it bagplus_backend_staging bash
+
+# Limpar tudo e recomeçar
+docker-compose down
+docker system prune -a
+docker-compose up -d --build
+```
 
 ## Autenticação JWT
 
@@ -184,48 +365,60 @@ Authorization: Bearer eyJ...
 
 ### Sistema de Roles e Permissões
 
-#### Admin (Acesso Total)
--  Todos os endpoints administrativos
--  Criar, editar e desativar usuários
--  Suspender e reativar clientes
--  Transferir sacolas entre clientes
--  Resetar contador de utilizações
--  Todos relatórios e exportações
--  Ver logs de auditoria
+#### 🔴 Admin (Acesso Total)
+- Todos os endpoints administrativos
+- Criar, editar e desativar usuários
+- Suspender e reativar clientes
+- Transferir sacolas entre clientes
+- Resetar contador de utilizações
+- Todos relatórios e exportações
+- Ver logs de auditoria
 
-####  Gerente (Acesso Gerencial)
--  Dashboard e relatórios
--  Importar e gerenciar lotes
--  Listar e resolver alertas
--  Exportar dados (CSV)
--  Consultar estoque
--  Listar usuários (read-only)
--  Ver logs de auditoria
--  Suspender/reativar clientes
--  Transferir sacolas
--  Resetar contador
--  Criar/editar usuários
+#### 🟡 Gerente (Acesso Gerencial)
+- Dashboard e relatórios
+- Importar e gerenciar lotes
+- Listar e resolver alertas
+- Exportar dados (CSV)
+- Consultar estoque
+- Listar usuários (read-only)
+- Ver logs de auditoria
+- Suspender/reativar clientes
+- Transferir sacolas
+- Resetar contador
+- Criar/editar usuários
 
-####  Caixa (Operacional Apenas)
--  Cadastrar clientes
--  Ativar sacolas
--  Registrar uso de sacolas
--  Devolver sacolas
--  Buscar clientes e sacolas
--  Nenhum acesso a endpoints admin
+#### 🟢 Caixa (Operacional Apenas)
+- Cadastrar clientes
+- Ativar sacolas
+- Registrar uso de sacolas
+- Devolver sacolas
+- Buscar clientes e sacolas
+- Nenhum acesso a endpoints admin
 
 ---
 
 ## Acessar Sistema
 
-- **Documentação API (Swagger)**: `http://localhost:8000/docs`
-- **Interface do Caixa**: `frontend-caixa/index.html` (em desenvolvimento)
+- **Produção:** `https://api.bagplus.com.br/docs`
+- **Staging:** `https://staging.bagplus.com.br/docs`
+- **Local:** `http://localhost:8000/docs`
+- **Interface do Caixa:** `apps/caixa/index.html` (em desenvolvimento)
 
 ---
 
 ## Estrutura do Projeto
-````
+
+```
 bagplus-loyalty-system/
+├── Dockerfile                  # Receita da imagem Docker
+├── docker-compose.yml          # Orquestração de containers
+├── .env                        # Variáveis de ambiente (NÃO commitar!)
+├── .env.example                # Template de variáveis
+├── .gitignore
+├── README.md
+├── PROPOSTA.md
+├── CONTRIBUTING.md
+│
 ├── services/                   # Backend
 │   └── backend/               # API FastAPI
 │       ├── app/              # Aplicação modular
@@ -256,39 +449,39 @@ bagplus-loyalty-system/
 │       │   └── middleware/   # Middlewares
 │       │       └── auth.py
 │       ├── docs/             # Documentação Swagger
-│       │   └── swagger/
-│       │       ├── config/
-│       │       └── styles/
 │       ├── scripts/          # Scripts de desenvolvimento
-│       │   └── dev_setup.py
-│       ├── data/             # Banco de dados
+│       ├── data/             # Banco de dados SQLite
 │       │   └── bagplus.db
 │       ├── run.py            # Launcher principal
 │       ├── requirements.txt
 │       └── .env
+│
 ├── apps/                      # Frontends (preparado)
 │   └── shared/               # Componentes compartilhados
+│
 ├── storage/                   # Arquivos gerados
-│   └── qrcodes/
-│       ├── csv/              # CSVs dos lotes
-│       ├── pdf/              # PDFs para impressão
-│       └── ultimo_id.txt     # Controle de sequência
+│   ├── qrcodes/
+│   │   ├── csv/              # CSVs dos lotes
+│   │   ├── pdf/              # PDFs para impressão
+│   │   └── ultimo_id.txt     # Controle de sequência
+│   ├── storage-prod/         # Uploads produção (Docker)
+│   └── storage-staging/      # Uploads staging (Docker)
+│
 ├── scripts/                   # Scripts auxiliares
 │   ├── qrcodes/
 │   │   ├── gerar_qrcodes.py
 │   │   └── limpar_qrcodes.py
 │   └── database/
 │       └── seed_data.py
+│
 ├── infra/                    # Infraestrutura
 │   └── database/
+│
 ├── docs/                     # Documentação geral
 │   └── SCANNER-REMOTE-KEYBOARD.md
-├── tests/                    # Testes (preparado)
-├── README.md
-├── PROPOSTA.md
-├── CONTRIBUTING.md
-└── .gitignore
-````
+│
+└── tests/                    # Testes (preparado)
+```
 
 ---
 
@@ -313,454 +506,42 @@ bagplus-loyalty-system/
 - **Pillow** - Manipulação de imagens
 - **ReportLab** - Geração de PDFs
 
+### Infraestrutura
+- **Docker** - Containerização
+- **Docker Compose** - Orquestração de containers
+- **Nginx** - Proxy reverso e SSL termination
+- **Let's Encrypt (Certbot)** - Certificados SSL gratuitos
+
 ### Segurança
 - **hashlib** - SHA256 para checksums
 - **SECRET_KEY** - Chave secreta compartilhada
 
 ---
 
-## API Endpoints (45 total)
+## API Endpoints (52 total)
+
+> **Documentação completa e interativa:**
+> - Produção: `https://api.bagplus.com.br/docs`
+> - Staging: `https://staging.bagplus.com.br/docs`
+> - Local: `http://localhost:8000/docs`
 
 ### Clientes (8 endpoints - Públicos)
-
-#### Criar Cliente
-```http
-POST /api/clientes
-Query Parameters:
-  - cpf: string (11 dígitos)
-  - nome: string (min 3 caracteres)
-```
-
-#### Listar Clientes
-```http
-GET /api/clientes
-Response: Lista de clientes com sacolas ativas e status
-```
-
-#### Buscar Cliente por Nome
-```http
-GET /api/clientes/buscar?nome=joão
-Response: Lista de clientes que correspondem ao termo (parcial, case-insensitive)
-```
-
-#### Validar CPF
-```http
-GET /api/clientes/{cpf}/validar
-Response: Verifica se cliente existe sem criar cadastro
-```
-
-#### Listar Sacolas do Cliente
-```http
-GET /api/clientes/{cpf}/sacolas
-Response: Sacolas ativas do cliente com estatísticas
-```
-
-#### Estatísticas do Cliente
-```http
-GET /api/clientes/{cpf}/estatisticas
-Response: Total gasto, valor médio, total de usos
-```
-
-#### Histórico Completo do Cliente
-```http
-GET /api/clientes/{cpf}/historico-completo
-Response: Timeline completa com eventos, compras, alertas, suspensões
-```
-
-#### Excluir Cliente (Restritivo)
-```http
-DELETE /api/clientes/{cpf}
-Validações: Bloqueia se cliente tem histórico (sacolas/alertas)
-```
-
----
-
 ### Sacolas (7 endpoints - Públicos)
-
-#### Buscar Sacola
-```http
-GET /api/sacolas/{sacola_id}
-Response: Informações completas, descontos, estado, fidelidade
-```
-
-#### Listar Sacolas Ativas
-```http
-GET /api/sacolas/ativas
-Response: Todas as sacolas em uso
-```
-
-#### Ativar Sacola
-```http
-POST /api/sacolas/ativar
-Query Parameters:
-  - qr_code: string (formato: BAG-00001:2026-03-31:checksum)
-  - cpf_cliente: string
-Validações:
-  - Checksum SHA256
-  - Status deve ser "estoque"
-  - Cliente deve existir
-```
-
-#### Registrar Uso
-```http
-POST /api/sacolas/registrar-uso
-Query Parameters:
-  - sacola_id: string
-  - valor_compra: string (aceita vírgula ou ponto)
-Validações:
-  - Intervalo mínimo 4 horas desde último uso
-  - Valor mínimo R$ 15,00
-  - Cliente não pode estar suspenso
-  - Máximo 40 utilizações
-Ações Automáticas:
-  - Detecta padrões suspeitos
-  - Gera alertas se necessário
-```
-
-#### Devolver Sacola
-```http
-POST /api/sacolas/devolver
-Query Parameters:
-  - sacola_id: string
-Response: Desconto concedido baseado no estado
-```
-
-#### Histórico de Uso
-```http
-GET /api/sacolas/{sacola_id}/historico
-Response: Histórico completo com valores, total gasto, valor médio
-```
-
-#### Verificar QR Code
-```http
-POST /api/sacolas/verificar-qr
-Query Parameters:
-  - qr_code: string
-Response: Valida checksum sem ativar sacola
-```
-
----
-
 ### Autenticação (3 endpoints - Públicos)
-
-#### Login
-```http
-POST /api/auth/login
-Content-Type: application/x-www-form-urlencoded
-
-username: string
-password: string
-
-Response: JWT token + dados do usuário
-```
-
-#### Informações do Usuário Logado
-```http
-GET /api/auth/me
-Authorization: Bearer {token}
-
-Response: Dados do usuário autenticado
-```
-
-#### Token de Desenvolvimento (Dev Only)
-```http
-GET /api/auth/dev-token
-
-Response: Token JWT válido para testes (apenas em ENVIRONMENT=development)
-```
-
----
-
 ### Admin - Lotes (3 endpoints - Admin + Gerente)
-
-#### Importar Lote
-```http
-POST /api/admin/lotes/importar
-Authorization: Bearer {token}
-Query Parameters:
-  - data_fabricacao: string (YYYY-MM-DD)
-  - inicio: int (ex: 1 para BAG-00001)
-  - fim: int (ex: 5000 para BAG-05000)
-Ação: Cria sacolas em status "estoque" com checksums
-```
-
-#### Listar Lotes
-```http
-GET /api/admin/lotes
-Authorization: Bearer {token}
-Response: Todos lotes com distribuição (estoque/ativas/devolvidas)
-```
-
-#### Estatísticas do Lote
-```http
-GET /api/admin/lotes/{lote_id}/estatisticas
-Authorization: Bearer {token}
-Response: Distribuição detalhada por status, taxa de utilização
-```
-
----
-
 ### Admin - Clientes (3 endpoints - Variado)
-
-#### Suspender Cliente
-```http
-POST /api/admin/clientes/{cpf}/suspender
-Authorization: Bearer {token}
-Permissão: Admin apenas
-Query Parameters:
-  - cpf: string
-  - motivo: string (min 10 caracteres)
-Ação: Registra log de auditoria
-```
-
-#### Reativar Cliente
-```http
-POST /api/admin/clientes/{cpf}/reativar
-Authorization: Bearer {token}
-Permissão: Admin apenas
-Query Parameters:
-  - cpf: string
-Ação: Registra log de auditoria
-```
-
-#### Listar Clientes Suspensos
-```http
-GET /api/admin/clientes/suspensos
-Authorization: Bearer {token}
-Permissão: Admin + Gerente
-Response: Clientes suspensos ou bloqueados com motivos
-```
-
----
-
 ### Admin - Alertas (2 endpoints - Admin + Gerente)
-
-#### Listar Alertas
-```http
-GET /api/admin/alertas
-Authorization: Bearer {token}
-Query Parameters (opcionais):
-  - resolvido: bool
-  - gravidade: string (baixa/media/alta)
-  - tipo: string
-Response: Alertas detectados automaticamente
-```
-
-#### Resolver Alerta
-```http
-POST /api/admin/alertas/{alerta_id}/resolver
-Authorization: Bearer {token}
-Query Parameters:
-  - alerta_id: int
-  - observacao: string (min 10 caracteres)
-Ação: Registra log de auditoria
-```
-
----
-
 ### Admin - Relatórios (4 endpoints - Admin + Gerente)
-
-#### Dashboard Administrativo
-```http
-GET /api/admin/relatorios/dashboard
-Authorization: Bearer {token}
-Response: Visão geral do negócio (totais, financeiro, alertas, top performers, crescimento)
-```
-
-#### Relatório de Vendas
-```http
-GET /api/admin/relatorios/vendas
-Authorization: Bearer {token}
-Query Parameters:
-  - data_inicio: string (YYYY-MM-DD)
-  - data_fim: string (YYYY-MM-DD)
-Response: Resumo geral, detalhamento diário, top performers do período
-```
-
-#### Estatísticas Gerais
-```http
-GET /api/admin/relatorios/estatisticas
-Authorization: Bearer {token}
-Response: Taxa devolução, tempo médio uso, recordes, performance financeira, crescimento
-```
-
-#### Análise de Crescimento Month-over-Month
-```http
-GET /api/admin/relatorios/crescimento
-Authorization: Bearer {token}
-Query Parameters (opcionais):
-  - meses: int (padrão 6, últimos N meses)
-Response: Análise comparativa mês a mês (novos clientes, sacolas ativadas, total gasto)
-```
-
----
-
 ### Admin - Sacolas (6 endpoints - Variado)
-
-#### Sacolas Próximas do Limite
-```http
-GET /api/admin/sacolas/proximo-limite?limite=35
-Authorization: Bearer {token}
-Permissão: Admin + Gerente
-Response: Sacolas com 35+ usos (perto de expirar)
-```
-
-#### Consultar Estoque
-```http
-GET /api/admin/sacolas/estoque?lote_id=1
-Authorization: Bearer {token}
-Permissão: Admin + Gerente
-Response: Sacolas disponíveis (nunca distribuídas)
-```
-
-#### Transferir Sacola
-```http
-POST /api/admin/sacolas/{sacola_id}/transferir
-Authorization: Bearer {token}
-Permissão: Admin apenas
-Query Parameters:
-  - cpf_origem: string
-  - cpf_destino: string
-  - motivo: string (min 10 caracteres)
-Ação: Transfere propriedade preservando histórico + log de auditoria
-```
-
-#### Resetar Contador
-```http
-POST /api/admin/sacolas/{sacola_id}/resetar-contador
-Authorization: Bearer {token}
-Permissão: Admin apenas
-Query Parameters:
-  - motivo: string (min 15 caracteres)
-Ação: Reseta utilizações para 0 (operação sensível) + log de auditoria
-```
-
-#### Identificar Sacolas em Risco
-```http
-GET /api/admin/sacolas/em-risco
-Authorization: Bearer {token}
-Permissão: Admin + Gerente
-Response: 
-  - prolongado_sem_uso: Sacolas ativas sem uso há 30+ dias
-  - uso_intensivo: Sacolas com 25+ usos (próximo do limite)
-  - multiplas_perto_limite: Clientes com 2+ sacolas acima de 30 usos
-```
-
----
-
 ### Admin - Exportação (3 endpoints - Admin + Gerente)
-
-#### Exportar Clientes
-```http
-GET /api/admin/exportar/clientes
-Authorization: Bearer {token}
-Query Parameters (opcionais):
-  - status: string (ativo/suspenso/bloqueado)
-  - data_inicio: string (YYYY-MM-DD)
-  - data_fim: string (YYYY-MM-DD)
-Response: CSV com CPF, Nome, Status, Sacolas Ativas, Total Gasto (UTF-8 BOM para Excel)
-```
-
-#### Exportar Sacolas
-```http
-GET /api/admin/exportar/sacolas
-Authorization: Bearer {token}
-Query Parameters (opcionais):
-  - status: string (estoque/ativo/devolvido)
-  - lote_id: int
-Response: CSV com ID, Status, Cliente, Utilizações, Estado, Lote (UTF-8 BOM)
-```
-
-#### Exportar Usos
-```http
-GET /api/admin/exportar/usos
-Authorization: Bearer {token}
-Query Parameters (opcionais):
-  - data_inicio: string (YYYY-MM-DD)
-  - data_fim: string (YYYY-MM-DD)
-  - cpf: string
-Response: CSV com Data/Hora, Sacola, Cliente, Valor (UTF-8 BOM)
-```
-
----
-
 ### Admin - Usuários (5 endpoints - Variado)
-
-#### Criar Usuário
-```http
-POST /api/admin/usuarios
-Authorization: Bearer {token}
-Permissão: Admin apenas
-Query Parameters:
-  - username: string (único, min 3 caracteres)
-  - password: string (min 6 caracteres)
-  - nome: string
-  - role: string (admin/gerente/caixa)
-Ação: Hash bcrypt da senha + log de auditoria
-```
-
-#### Listar Usuários
-```http
-GET /api/admin/usuarios
-Authorization: Bearer {token}
-Permissão: Admin + Gerente
-Query Parameters (opcionais):
-  - ativo: bool
-  - role: string
-Response: Lista de usuários (senha omitida)
-```
-
-#### Buscar Usuário
-```http
-GET /api/admin/usuarios/{usuario_id}
-Authorization: Bearer {token}
-Permissão: Admin + Gerente
-Response: Dados do usuário (senha omitida)
-```
-
-#### Editar Usuário
-```http
-PUT /api/admin/usuarios/{usuario_id}
-Authorization: Bearer {token}
-Permissão: Admin apenas
-Query Parameters (opcionais):
-  - nome: string
-  - role: string
-  - password: string (se fornecido, será re-hasheado)
-Ação: Log de auditoria
-```
-
-#### Desativar Usuário
-```http
-DELETE /api/admin/usuarios/{usuario_id}
-Authorization: Bearer {token}
-Permissão: Admin apenas
-Ação: Marca usuário como inativo (soft delete) + log de auditoria
-```
-
----
-
 ### Admin - Auditoria (1 endpoint - Admin + Gerente)
 
-#### Consultar Logs de Auditoria
-```http
-GET /api/admin/auditoria/logs
-Authorization: Bearer {token}
-Query Parameters (opcionais):
-  - data_inicio: string (YYYY-MM-DD)
-  - data_fim: string (YYYY-MM-DD)
-  - usuario_id: int
-  - usuario_username: string
-  - acao: string
-  - entidade_tipo: string (Cliente/Sacola/Usuario/Alerta/Lote)
-  - entidade_id: string
-  - limit: int (padrão 100, máx 1000)
-Response: Logs com usuário, ação, entidade, detalhes JSON, timestamp, IP
-```
-
-> **Documentação completa e interativa:** `http://localhost:8000/docs`
+*(Detalhamento completo dos 52 endpoints disponível em `/docs` de cada ambiente)*
 
 ---
+<!-- PARTE 3 DE 3 -->
+<!-- CONTINUAÇÃO DA PARTE 2 -->
 
 ## Banco de Dados
 
@@ -810,7 +591,7 @@ Response: Logs com usuário, ação, entidade, detalhes JSON, timestamp, IP
 - observacao
 - data_resolucao
 
-#### usuarios (NOVO - Sprint 6)
+#### usuarios
 - id (PK)
 - username (único)
 - password_hash (bcrypt)
@@ -820,7 +601,7 @@ Response: Logs com usuário, ação, entidade, detalhes JSON, timestamp, IP
 - data_criacao
 - ultimo_login
 
-#### logs_auditoria (NOVO - Sprint 6)
+#### logs_auditoria
 - id (PK)
 - usuario_id (FK)
 - usuario_username
@@ -884,7 +665,7 @@ fim: 5000
 #### 0. Obter Token JWT
 ```bash
 # Iniciar servidor
-python main.py
+python run.py
 
 # Copiar token exibido no console
 # OU fazer login via API
@@ -963,30 +744,29 @@ GET /api/admin/auditoria/logs
 ### Variáveis de Ambiente (.env)
 ```env
 # Banco de Dados
-DATABASE_URL=sqlite:///./bagplus.db
+DATABASE_URL=sqlite:///./data/bagplus.db
 
-# Segurança (OBRIGATÓRIO)
-SECRET_KEY=sua_chave_secreta_unica_aqui_256bits
+# Ambiente
+ENVIRONMENT=development
 
-# Autenticação JWT
-JWT_SECRET_KEY=outra_chave_secreta_para_jwt_256bits
-JWT_ALGORITHM=HS256
-JWT_EXPIRATION_HOURS=24
-
-# Usuário Admin de Desenvolvimento (criado automaticamente)
-DEV_ADMIN_USERNAME=xxxxxxx
-DEV_ADMIN_PASSWORD=xxxxxxx
-
-# Servidor
+# API
 API_HOST=0.0.0.0
 API_PORT=8000
-ENVIRONMENT=development
+
+# Segurança (OBRIGATÓRIO - Gerar com: openssl rand -hex 32)
+SECRET_KEY=sua_chave_secreta_unica_aqui_256bits
+JWT_SECRET_KEY=outra_chave_secreta_para_jwt_256bits
+
+# Credenciais de Desenvolvimento (criadas automaticamente)
+DEV_ADMIN_USERNAME=dev_admin
+DEV_ADMIN_PASSWORD=ProjetoBag+2026
 ```
 
 > **IMPORTANTE:** 
 > - A mesma `SECRET_KEY` deve estar no servidor e no script de geração de QR Codes
 > - `DEV_ADMIN_USERNAME` e `DEV_ADMIN_PASSWORD` são criados automaticamente em modo development
 > - Em produção, definir `ENVIRONMENT=production` desativa criação automática
+> - NUNCA commitar .env no Git!
 
 ---
 
@@ -1009,14 +789,14 @@ ENVIRONMENT=development
    - Bloqueio permanente quando necessário
    - Registro de motivos e datas
 
-4. **Autenticação e Autorização** (NOVO - Sprint 6)
+4. **Autenticação e Autorização**
    - JWT com expiração de 24h
    - Hash de senhas com bcrypt (custo 12)
    - Controle granular por roles (admin/gerente/caixa)
    - 31 endpoints protegidos
    - Middleware de autenticação automática
 
-5. **Auditoria Completa** (NOVO - Sprint 6)
+5. **Auditoria Completa**
    - Histórico completo de eventos
    - Logs de todas ações administrativas
    - Rastreamento de quem fez o quê e quando
@@ -1039,7 +819,7 @@ Ver documentação completa: [docs/SCANNER-REMOTE-KEYBOARD.md](docs/SCANNER-REMO
 
 #### Erro: "Module not found"
 ```bash
-pip install -r backend/requirements.txt
+pip install -r services/backend/requirements.txt
 ```
 
 #### Erro: "QR Code inválido"
@@ -1053,6 +833,19 @@ pip install -r backend/requirements.txt
 - Verificar se token JWT está sendo enviado no header Authorization
 - Verificar se token não expirou (24h de validade)
 - Verificar se usuário tem a role necessária para o endpoint
+
+#### Erro: "Port already in use"
+```bash
+# Windows
+netstat -ano | findstr :8000
+taskkill /PID <PID> /F
+
+# Linux/Mac
+lsof -i :8000
+kill -9 <PID>
+
+# Ou trocar porta no docker-compose.yml
+```
 
 ---
 
@@ -1073,4 +866,8 @@ Este é um projeto comercial proprietário. O código está disponível para ava
 
 ---
 
-**Versão:** v0.90-beta | **52 endpoints funcionais** | **Atualizado:** 08/04/2026 | **Arquitetura:** Modular Monorepo
+**Versão:** v0.90-beta  
+**Endpoints:** 52 funcionais  
+**Atualizado:** 11/04/2026  
+**Arquitetura:** Modular Monorepo + Docker  
+**Status:** 🟢 Produção Online (AWS São Paulo)
