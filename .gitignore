@@ -125,14 +125,6 @@ coverage/
 .pytest_cache/
 
 # ============================================================================
-# DOCKER (Futuro)
-# ============================================================================
-
-# Docker
-*.env.docker
-docker-compose.override.yml
-
-# ============================================================================
 # MOBILE (React Native - Futuro)
 # ============================================================================
 
@@ -150,3 +142,18 @@ apps/cliente/mobile/ios/Pods/
 !storage/qrcodes/csv/.gitkeep
 !storage/qrcodes/pdf/.gitkeep
 !storage/exports/.gitkeep
+
+# ============================================================================
+# DOCKER
+# ============================================================================
+
+# Environment Docker
+*.env.docker
+docker-compose.override.yml
+
+# Data directories (containers)
+data-prod/
+data-staging/
+storage-prod/
+storage-staging/
+

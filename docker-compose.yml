@@ -1,0 +1,24 @@
+﻿version: '3.8'
+
+services:
+  backend:
+    build: .
+    container_name: bagplus_backend_local
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=sqlite:///./data/bagplus.db
+      - SECRET_KEY=${SECRET_KEY}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - ENVIRONMENT=development
+    volumes:
+      - ./storage:/app/storage
+      - ./services/backend/data:/app/data
+      - ./services/backend:/app
+    networks:
+      - bagplus-network
+
+networks:
+  bagplus-network:
+    driver: bridge
