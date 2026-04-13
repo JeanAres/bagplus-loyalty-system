@@ -1,21 +1,39 @@
-﻿version: '3.8'
+version: '3.8'
 
 services:
-  backend:
+  # BACKEND PRODUÇÃO
+  backend-prod:
     build: .
-    container_name: bagplus_backend_local
+    container_name: bagplus_backend_prod
     restart: unless-stopped
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=sqlite:///./data/bagplus.db
+      - DATABASE_URL=sqlite:///./data/bagplus_prod.db
       - SECRET_KEY=${SECRET_KEY}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY}
-      - ENVIRONMENT=development
+      - ENVIRONMENT=production
     volumes:
-      - ./storage:/app/storage
-      - ./services/backend/data:/app/data
-      - ./services/backend:/app
+      - ./storage-prod:/app/storage
+      - ./data-prod:/app/data
+    networks:
+      - bagplus-network
+
+  # BACKEND STAGING (TESTE)
+  backend-staging:
+    build: .
+    container_name: bagplus_backend_staging
+    restart: unless-stopped
+    ports:
+      - "8001:8000"
+    environment:
+      - DATABASE_URL=sqlite:///./data/bagplus_staging.db
+      - SECRET_KEY=${SECRET_KEY}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - ENVIRONMENT=staging
+    volumes:
+      - ./storage-staging:/app/storage
+      - ./data-staging:/app/data
     networks:
       - bagplus-network
 
