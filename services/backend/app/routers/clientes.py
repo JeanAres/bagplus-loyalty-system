@@ -17,7 +17,9 @@ router = APIRouter(
 @router.post(
     "/",
     summary="Cadastrar novo cliente",
-    description="""
+)
+def criar_cliente(cpf: str, nome: str, db: Session = Depends(get_db)):
+    """
     Cadastra um novo cliente no programa de fidelidade Bag+.
     
     **Quando usar:**
@@ -31,9 +33,6 @@ router = APIRouter(
     
     **Observação:** Aceita CPF com ou sem formatação (123.456.789-00 ou 12345678900)
     """
-)
-def criar_cliente(cpf: str, nome: str, db: Session = Depends(get_db)):
-    """Cria um novo cliente no sistema"""
     
     # Validar CPF (apenas números)
     cpf_numeros = cpf.replace('.', '').replace('-', '')
@@ -69,7 +68,9 @@ def criar_cliente(cpf: str, nome: str, db: Session = Depends(get_db)):
 @router.get(
     "/",
     summary="Listar todos os clientes",
-    description="""
+)
+def listar_clientes(db: Session = Depends(get_db)):
+    """
     Lista todos os clientes cadastrados no sistema com informações básicas.
     
     **Retorna:**
@@ -78,9 +79,6 @@ def criar_cliente(cpf: str, nome: str, db: Session = Depends(get_db)):
     
     **Uso:** Visão geral dos clientes cadastrados
     """
-)
-def listar_clientes(db: Session = Depends(get_db)):
-    """Lista todos os clientes cadastrados"""
     
     clientes = db.query(models.Cliente).all()
     
@@ -109,7 +107,9 @@ def listar_clientes(db: Session = Depends(get_db)):
 @router.get(
     "/buscar",
     summary="Buscar cliente por nome",
-    description="""
+)
+def buscar_cliente_por_nome(nome: str, db: Session = Depends(get_db)):
+    """
     Busca clientes pelo nome (busca parcial, case-insensitive).
     
     **Funcionalidade:**
@@ -132,19 +132,15 @@ def listar_clientes(db: Session = Depends(get_db)):
     - nome: Termo de busca (mínimo 3 caracteres)
     
     **Exemplos:**
-```
+
     GET /api/clientes/buscar?nome=joão
     GET /api/clientes/buscar?nome=silva
     GET /api/clientes/buscar?nome=maria
-```
     
     **Observação:** 
     - Retorna lista vazia se nenhum cliente corresponder
     - Limite de 20 resultados para performance
     """
-)
-def buscar_cliente_por_nome(nome: str, db: Session = Depends(get_db)):
-    """Busca clientes por nome (parcial)"""
     
     # Validar termo de busca
     if len(nome.strip()) < 3:
@@ -185,7 +181,9 @@ def buscar_cliente_por_nome(nome: str, db: Session = Depends(get_db)):
 @router.get(
     "/{cpf}/sacolas",
     summary="Listar sacolas do cliente",
-    description="""
+)
+def listar_sacolas_cliente(cpf: str, db: Session = Depends(get_db)):
+    """
     Lista todas as sacolas ativas vinculadas a um cliente específico.
     
     **Retorna:**
@@ -196,9 +194,6 @@ def buscar_cliente_por_nome(nome: str, db: Session = Depends(get_db)):
     
     **Quando usar:** Ver quais sacolas o cliente possui atualmente
     """
-)
-def listar_sacolas_cliente(cpf: str, db: Session = Depends(get_db)):
-    """Lista todas as sacolas ativas de um cliente"""
     
     cliente = db.query(models.Cliente).filter(models.Cliente.cpf == cpf).first()
     if not cliente:
@@ -237,7 +232,9 @@ def listar_sacolas_cliente(cpf: str, db: Session = Depends(get_db)):
 @router.get(
     "/{cpf}/estatisticas",
     summary="Estatísticas do cliente",
-    description="""
+)
+def estatisticas_cliente(cpf: str, db: Session = Depends(get_db)):
+    """
     Retorna estatísticas consolidadas de compras do cliente.
     
     **Informações retornadas:**
@@ -250,9 +247,6 @@ def listar_sacolas_cliente(cpf: str, db: Session = Depends(get_db)):
     
     **Nota:** Considera apenas sacolas ativas do cliente
     """
-)
-def estatisticas_cliente(cpf: str, db: Session = Depends(get_db)):
-    """Retorna estatísticas de compras do cliente"""
     
     cliente = db.query(models.Cliente).filter(models.Cliente.cpf == cpf).first()
     if not cliente:
@@ -292,7 +286,9 @@ def estatisticas_cliente(cpf: str, db: Session = Depends(get_db)):
 @router.get(
     "/{cpf}/historico-completo",
     summary="Histórico completo do cliente",
-    description="""
+)
+def historico_completo_cliente(cpf: str, db: Session = Depends(get_db)):
+    """
     Retorna timeline completa de TUDO que o cliente fez no sistema.
     
     **Informações consolidadas:**
@@ -337,9 +333,6 @@ def estatisticas_cliente(cpf: str, db: Session = Depends(get_db)):
     
     **Observação:** Timeline pode ser extensa para clientes antigos
     """
-)
-def historico_completo_cliente(cpf: str, db: Session = Depends(get_db)):
-    """Retorna histórico completo e timeline do cliente"""
     
     # Buscar cliente
     cliente = db.query(models.Cliente).filter(models.Cliente.cpf == cpf).first()
@@ -484,7 +477,9 @@ def historico_completo_cliente(cpf: str, db: Session = Depends(get_db)):
 @router.get(
     "/{cpf}/validar",
     summary="Validar se cliente existe",
-    description="""
+)
+def validar_cliente(cpf: str, db: Session = Depends(get_db)):
+    """
     Verifica se um cliente existe no sistema sem criar cadastro.
     
     **Funcionalidade:**
@@ -509,9 +504,8 @@ def historico_completo_cliente(cpf: str, db: Session = Depends(get_db)):
     - cpf: CPF do cliente (11 dígitos)
     
     **Exemplos:**
-```
+
     GET /api/clientes/12345678900/validar
-```
     
     **Diferença de outros endpoints:**
     - GET /api/clientes/{cpf}/sacolas → Retorna sacolas (erro se não existe)
@@ -520,9 +514,6 @@ def historico_completo_cliente(cpf: str, db: Session = Depends(get_db)):
     **Observação:** 
     - Não cria cliente se não existir
     """
-)
-def validar_cliente(cpf: str, db: Session = Depends(get_db)):
-    """Valida se cliente existe sem criar cadastro"""
     
     cliente = db.query(models.Cliente).filter(models.Cliente.cpf == cpf).first()
     
@@ -614,7 +605,9 @@ def validar_cpf_endpoint(cpf: str):
     "/{cpf}",
     summary="Excluir cliente (restritivo)",
     dependencies=[Depends(require_role(["admin"]))],
-    description="""
+)
+def excluir_cliente(cpf: str, db: Session = Depends(get_db)):
+    """
     Exclui um cliente do sistema com validações restritivas.
     
     **ATENÇÃO - Validações Aplicadas:**
@@ -628,10 +621,18 @@ def validar_cpf_endpoint(cpf: str):
     **Quando usar:** Cadastro duplicado ou erro de digitação no cadastro inicial
     
     **Não usar para:** Clientes que já utilizaram o sistema (use suspensão)
+
+    **Parâmetro:**
+    - cpf: CPF do cliente (11 dígitos)
+    
+    **Retorna:**
+    - sucesso: true
+    - mensagem: Confirmação da exclusão
+    
+    **Erros possíveis:**
+    - 404: Cliente não encontrado
+    - 400: Cliente possui sacolas ativas/devolvidas ou alertas
     """
-)
-def excluir_cliente(cpf: str, db: Session = Depends(get_db)):
-    """Exclui cliente do sistema (apenas se nunca usou)"""
     
     # Buscar cliente
     cliente = db.query(models.Cliente).filter(models.Cliente.cpf == cpf).first()

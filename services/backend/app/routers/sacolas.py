@@ -27,7 +27,9 @@ router = APIRouter(
 @router.get(
     "/{sacola_id}",
     summary="Buscar informações da sacola",
-    description="""
+)
+def buscar_sacola(sacola_id: str, db: Session = Depends(get_db)):
+    """
     Retorna todas as informações de uma sacola específica.
     
     **Informações retornadas:**
@@ -46,9 +48,6 @@ router = APIRouter(
     - 🟡 Amarelo: 16-25 usos, até 80 dias (desconto R$ 20,00)
     - 🔴 Vermelho: 26-40 usos, até 90 dias (desconto R$ 10,00)
     """
-)
-def buscar_sacola(sacola_id: str, db: Session = Depends(get_db)):
-    """Busca informações completas de uma sacola"""
     
     sacola = db.query(models.Sacola).filter(models.Sacola.id == sacola_id).first()
     if not sacola:
@@ -111,7 +110,9 @@ def buscar_sacola(sacola_id: str, db: Session = Depends(get_db)):
 @router.post(
     "/ativar",
     summary="Ativar sacola (individual)",
-    description="""
+)
+def ativar_sacola(qr_code: str, cpf_cliente: str, db: Session = Depends(get_db)):
+    """
     Vincula uma sacola a um cliente através do QR Code.
     
     **Uso principal:** Sistema de caixa com leitora de QR Code (pistolinha)
@@ -130,9 +131,6 @@ def buscar_sacola(sacola_id: str, db: Session = Depends(get_db)):
     
     **Observação:** Para vincular múltiplas sacolas de uma vez (testes), use /ativar-lote
     """
-)
-def ativar_sacola(qr_code: str, cpf_cliente: str, db: Session = Depends(get_db)):
-    """Ativa uma sacola vinculando ao cliente"""
     
     # Validar QR Code
     valido, sacola_id, data_criacao, erro = validar_qrcode_checksum(qr_code)
@@ -216,7 +214,13 @@ def ativar_sacola(qr_code: str, cpf_cliente: str, db: Session = Depends(get_db))
 @router.post(
     "/ativar-lote",
     summary="Ativar múltiplas sacolas (lote)",
-    description="""
+)
+def ativar_sacolas_lote(
+    qr_codes: list[str],
+    cpf_cliente: str,
+    db: Session = Depends(get_db)
+):
+    """
     Vincula múltiplas sacolas a um cliente de uma só vez.
     
     **USO: Apenas para TESTES**
@@ -234,7 +238,7 @@ def ativar_sacola(qr_code: str, cpf_cliente: str, db: Session = Depends(get_db))
     - cpf_cliente: CPF do cliente
     
     **Exemplo de uso:**
-```json
+    json
     {
       "qr_codes": [
         "BAG-00001:2026-03-31:abc123",
@@ -243,15 +247,7 @@ def ativar_sacola(qr_code: str, cpf_cliente: str, db: Session = Depends(get_db))
       ],
       "cpf_cliente": "12345678900"
     }
-```
     """
-)
-def ativar_sacolas_lote(
-    qr_codes: list[str],
-    cpf_cliente: str,
-    db: Session = Depends(get_db)
-):
-    """Ativa múltiplas sacolas de uma vez (testes)"""
     
     # Verificar se cliente existe
     cliente = db.query(models.Cliente).filter(models.Cliente.cpf == cpf_cliente).first()
@@ -387,7 +383,13 @@ def ativar_sacolas_lote(
 @router.post(
     "/registrar-uso",
     summary="Registrar uso da sacola",
-    description="""
+)
+def registrar_uso(
+    sacola_id: str,
+    valor_compra: str,
+    db: Session = Depends(get_db)
+):
+    """
     Registra uma nova utilização da sacola com valor da compra.
     
     **Validações aplicadas:**
@@ -413,13 +415,6 @@ def ativar_sacolas_lote(
     
     **Observação:** Aceita formatos: 125.50 ou 125,50
     """
-)
-def registrar_uso(
-    sacola_id: str,
-    valor_compra: str,
-    db: Session = Depends(get_db)
-):
-    """Registra uso da sacola com valor da compra"""
     
     # Buscar sacola
     sacola = db.query(models.Sacola).filter(models.Sacola.id == sacola_id).first()
@@ -550,7 +545,9 @@ def registrar_uso(
 @router.post(
     "/devolver",
     summary="Devolver sacola",
-    description="""
+)
+def devolver_sacola(sacola_id: str, db: Session = Depends(get_db)):
+    """
     Processa a devolução de uma sacola e calcula desconto.
     
     **Cálculo de desconto baseado no estado:**
@@ -568,9 +565,6 @@ def registrar_uso(
     
     **Observação:** Após devolução, sacola não pode ser reativada
     """
-)
-def devolver_sacola(sacola_id: str, db: Session = Depends(get_db)):
-    """Processa devolução da sacola"""
     
     sacola = db.query(models.Sacola).filter(models.Sacola.id == sacola_id).first()
     if not sacola:
@@ -624,7 +618,9 @@ def devolver_sacola(sacola_id: str, db: Session = Depends(get_db)):
 @router.get(
     "/{sacola_id}/historico",
     summary="Histórico de uso da sacola",
-    description="""
+)
+def historico_uso(sacola_id: str, db: Session = Depends(get_db)):
+    """
     Retorna histórico completo de utilizações de uma sacola.
     
     **Informações retornadas:**
@@ -640,9 +636,6 @@ def devolver_sacola(sacola_id: str, db: Session = Depends(get_db)):
     
     **Observação:** Histórico ordenado da mais recente para mais antiga
     """
-)
-def historico_uso(sacola_id: str, db: Session = Depends(get_db)):
-    """Retorna histórico de uso da sacola"""
     
     sacola = db.query(models.Sacola).filter(models.Sacola.id == sacola_id).first()
     if not sacola:
@@ -676,7 +669,9 @@ def historico_uso(sacola_id: str, db: Session = Depends(get_db)):
 @router.post(
     "/verificar-qr",
     summary="Verificar QR Code sem ativar",
-    description="""
+)
+def verificar_qr_code(qr_code: str, db: Session = Depends(get_db)):
+    """
     Valida o QR Code sem vincular a sacola ao cliente.
     
     **Quando usar:** 
@@ -691,9 +686,6 @@ def historico_uso(sacola_id: str, db: Session = Depends(get_db)):
     **Parâmetro:**
     - qr_code: QR Code completo (BAG-00001:2026-03-31:checksum)
     """
-)
-def verificar_qr_code(qr_code: str, db: Session = Depends(get_db)):
-    """Verifica validade do QR Code sem ativar"""
     
     valido, sacola_id, data_criacao, erro = validar_qrcode_checksum(qr_code)
     
@@ -730,7 +722,9 @@ def verificar_qr_code(qr_code: str, db: Session = Depends(get_db)):
 @router.get(
     "/ativas",
     summary="Listar sacolas ativas",
-    description="""
+)
+def listar_sacolas_ativas(db: Session = Depends(get_db)):
+    """
     Lista todas as sacolas que estão ativas (vinculadas a clientes).
     
     **Informações retornadas:**
@@ -746,9 +740,6 @@ def verificar_qr_code(qr_code: str, db: Session = Depends(get_db)):
     
     **Observação:** Lista ordenada por última utilização (mais recentes primeiro)
     """
-)
-def listar_sacolas_ativas(db: Session = Depends(get_db)):
-    """Lista todas as sacolas ativas"""
     
     sacolas = db.query(models.Sacola).filter(
         models.Sacola.status == models.StatusSacola.ativo

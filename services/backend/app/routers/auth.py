@@ -18,7 +18,13 @@ router = APIRouter(
 @router.post(
     "/login",
     summary="Login no sistema",
-    description="""
+)
+def login(
+    username: str,
+    password: str,
+    db: Session = Depends(get_db)
+):
+    """
     Autentica usuário e retorna token JWT.
     
     **Credenciais:**
@@ -40,13 +46,6 @@ router = APIRouter(
     
     **Observação:** Token válido por 24 horas em desenvolvimento
     """
-)
-def login(
-    username: str,
-    password: str,
-    db: Session = Depends(get_db)
-):
-    """Autentica usuário e retorna token JWT"""
     
     # Buscar usuário
     user = db.query(models.Usuario).filter(
@@ -102,7 +101,9 @@ def login(
 @router.get(
     "/me",
     summary="Informações do usuário logado",
-    description="""
+)
+def get_me(current_user: models.Usuario = Depends(get_current_user)):
+    """
     Retorna informações do usuário autenticado pelo token.
     
     **Requer:** Token JWT válido
@@ -120,9 +121,6 @@ def login(
     - Obter informações do usuário logado
     - Exibir nome do usuário na interface
     """
-)
-def get_me(current_user: models.Usuario = Depends(get_current_user)):
-    """Retorna informações do usuário logado"""
     
     return {
         "id": current_user.id,
@@ -138,7 +136,9 @@ def get_me(current_user: models.Usuario = Depends(get_current_user)):
 @router.get(
     "/dev-token",
     summary="Token de desenvolvimento (apenas DEV)",
-    description="""
+)
+def get_dev_token(db: Session = Depends(get_db)):
+    """
     Gera token de desenvolvimento sem necessidade de login.
     
     **ATENÇÃO:** Este endpoint só funciona em ambiente de desenvolvimento.
@@ -155,9 +155,6 @@ def get_me(current_user: models.Usuario = Depends(get_current_user)):
     - Válido por 24 horas
     - Desabilitado em produção
     """
-)
-def get_dev_token(db: Session = Depends(get_db)):
-    """Gera token de desenvolvimento (apenas em DEV)"""
     
     import os
     environment = os.getenv("ENVIRONMENT", "development")
