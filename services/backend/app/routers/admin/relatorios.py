@@ -18,7 +18,12 @@ router = APIRouter(
 @router.get(
     "/dashboard",
     summary="Dashboard administrativo",
-    description="""
+)
+def dashboard_admin(
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
+):
+    """
     Retorna visão geral completa do negócio em um único endpoint.
     
     **Informações consolidadas:**
@@ -58,12 +63,6 @@ router = APIRouter(
     
     **Performance:** Otimizado com queries agregadas, retorna em ~200ms
     """
-)
-def dashboard_admin(
-    db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
-):
-    """Dashboard com visão geral do negócio"""
     
     # ========== TOTAIS GERAIS ==========
     total_clientes = db.query(models.Cliente).count()
@@ -241,7 +240,14 @@ def dashboard_admin(
 @router.get(
     "/vendas",
     summary="Relatório de vendas por período",
-    description="""
+)
+def relatorio_vendas(
+    data_inicio: str,
+    data_fim: str,
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
+):
+    """
     Gera relatório detalhado de vendas em um período específico.
     
     **Informações retornadas:**
@@ -267,27 +273,14 @@ def dashboard_admin(
     - data_fim: Data final (formato: YYYY-MM-DD)
     
     **Exemplos:**
-```
-    # Relatório do mês de março
-    GET /api/admin/relatorios/vendas?data_inicio=2026-03-01&data_fim=2026-03-31
-    
-    # Relatório da semana passada
-    GET /api/admin/relatorios/vendas?data_inicio=2026-03-24&data_fim=2026-03-30
-```
+    - **Relatório do mês de março:** /api/admin/relatorios/vendas?data_inicio=2026-03-01&data_fim=2026-03-31
+    - **Relatório da semana passada:** /api/admin/relatorios/vendas?data_inicio=2026-03-24&data_fim=2026-03-30
     
     **Quando usar:**
     - Relatórios mensais para gerência
     - Análise de performance por período
     - Comparação entre períodos
     """
-)
-def relatorio_vendas(
-    data_inicio: str,
-    data_fim: str,
-    db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
-):
-    """Gera relatório de vendas por período"""
     
     # Validar datas
     try:
@@ -438,7 +431,12 @@ def relatorio_vendas(
 @router.get(
     "/estatisticas",
     summary="Estatísticas gerais do sistema",
-    description="""
+)
+def estatisticas_gerais(
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
+):
+    """
     Retorna estatísticas consolidadas de todo o sistema.
     
     **Informações retornadas:**
@@ -472,12 +470,6 @@ def relatorio_vendas(
     - Análise de performance geral
     - Benchmarking
     """
-)
-def estatisticas_gerais(
-    db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
-):
-    """Retorna estatísticas consolidadas do sistema"""
     
     # ========== TAXA DE DEVOLUÇÃO ==========
     sacolas_distribuidas = db.query(models.Sacola).filter(
@@ -635,25 +627,31 @@ def estatisticas_gerais(
 @router.get(
     "/crescimento",
     summary="Análise de crescimento do negócio",
-    description="""
+)
+def analise_crescimento(
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
+):
+
+    """
     Retorna análise de crescimento mês a mês (últimos 6 meses).
     
     **Informações retornadas:**
     
-    ** Por Mês (últimos 6 meses):**
+    **Por Mês (últimos 6 meses):**
     - Ano/Mês
     - Novos clientes cadastrados
     - Sacolas ativadas (vinculadas)
     - Valor movimentado no mês
     - Total de usos no mês
     
-    ** Resumo Geral:**
+    **Resumo Geral:**
     - Total de novos clientes (6 meses)
     - Total de sacolas ativadas (6 meses)
     - Valor total movimentado (6 meses)
     - Crescimento percentual mês a mês
     
-    ** Insights:**
+    **Insights:**
     - Mês com mais clientes
     - Mês com mais faturamento
     - Tendência de crescimento
@@ -668,13 +666,6 @@ def estatisticas_gerais(
     - Considera mês atual e 5 anteriores
     - Dados ordenados do mais antigo para o mais recente
     """
-)
-def analise_crescimento(
-    db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
-):
-
-    """Retorna análise de crescimento dos últimos 6 meses"""
     
     from collections import defaultdict
     from dateutil.relativedelta import relativedelta

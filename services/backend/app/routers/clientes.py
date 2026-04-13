@@ -293,32 +293,32 @@ def historico_completo_cliente(cpf: str, db: Session = Depends(get_db)):
     
     **Informações consolidadas:**
     
-    ** Dados do Cliente:**
+    **Dados do Cliente:**
     - CPF, nome, data de cadastro
     - Status atual dos benefícios
     
-    ** Resumo de Compras:**
+    **Resumo de Compras:**
     - Total gasto em todas as compras
     - Valor médio por compra
     - Total de usos realizados
     - Primeira e última compra
     
-    ** Sacolas:**
+    **Sacolas:**
     - Sacolas ativas (em uso)
     - Sacolas devolvidas (histórico)
     - Total de sacolas já vinculadas
     
-    ** Alertas:**
+    **Alertas:**
     - Alertas detectados automaticamente
     - Status de resolução
     - Observações dos alertas resolvidos
     
-    ** Suspensões:**
+    **Suspensões:**
     - Histórico de suspensões (se houver)
     - Motivos de suspensão
     - Datas de suspensão/reativação
     
-    ** Timeline:**
+    **Timeline:**
     - Eventos ordenados por data (mais recente primeiro)
     - Tipos: cadastro, vinculação, uso, devolução, alerta, suspensão
     

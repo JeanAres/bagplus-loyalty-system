@@ -18,7 +18,13 @@ router = APIRouter(
 @router.get(
     "/proximo-limite",
     summary="Sacolas próximas do limite",
-    description="""
+)
+def sacolas_proximo_limite(
+    limite: int = 35, 
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
+):
+    """
     Lista sacolas que estão próximas de atingir o limite de 40 usos.
     
     **Funcionalidade:**
@@ -38,16 +44,9 @@ router = APIRouter(
     - limite: Quantidade mínima de usos para considerar "próximo do limite" (padrão: 35)
     
     **Exemplos:**
-```
-    # Sacolas com 35+ usos (padrão)
-    GET /api/admin/sacolas/proximo-limite
-    
-    # Sacolas com 30+ usos
-    GET /api/admin/sacolas/proximo-limite?limite=30
-    
-    # Sacolas com 38+ usos (muito crítico)
-    GET /api/admin/sacolas/proximo-limite?limite=38
-```
+    - **Sacolas com 35+ usos (padrão):** /api/admin/sacolas/proximo-limite
+    - **Sacolas com 30+ usos:** /api/admin/sacolas/proximo-limite?limite=30
+    - **Sacolas com 38+ usos (muito crítico):** /api/admin/sacolas/proximo-limite?limite=38
     
     **Quando usar:**
     - Rotina diária de gestão
@@ -58,13 +57,6 @@ router = APIRouter(
     - Ordenado por utilizações (maior primeiro)
     - Limite máximo é 40 usos
     """
-)
-def sacolas_proximo_limite(
-    limite: int = 35, 
-    db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
-):
-    """Lista sacolas próximas do limite de 40 usos"""
     
     # Validar limite
     if limite < 1 or limite > 40:
@@ -123,7 +115,13 @@ def sacolas_proximo_limite(
 @router.get(
     "/estoque",
     summary="Listar sacolas em estoque",
-    description="""
+)
+def listar_estoque(
+    lote_id: int = None, 
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
+):
+    """
     Lista sacolas disponíveis em estoque (não vinculadas a clientes).
     
     **Funcionalidade:**
@@ -141,13 +139,8 @@ def sacolas_proximo_limite(
     - lote_id: Filtrar por lote específico
     
     **Exemplos:**
-```
-    # Todo o estoque
-    GET /api/admin/sacolas/estoque
-    
-    # Estoque de um lote específico
-    GET /api/admin/sacolas/estoque?lote_id=1
-```
+    - **Todo o estoque:** /api/admin/sacolas/estoque
+    - **Estoque de um lote específico:** /api/admin/sacolas/estoque?lote_id=1
     
     **Quando usar:**
     - Verificar disponibilidade antes de vincular
@@ -159,13 +152,6 @@ def sacolas_proximo_limite(
     - Status "estoque" = nunca foram distribuídas
     - Ordenado por ID da sacola
     """
-)
-def listar_estoque(
-    lote_id: int = None, 
-    db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
-):
-    """Lista sacolas disponíveis em estoque"""
     
     # Query base
     query = db.query(models.Sacola).filter(
@@ -217,7 +203,16 @@ def listar_estoque(
 @router.post(
     "/{sacola_id}/transferir",
     summary="Transferir sacola entre clientes",
-    description="""
+)
+def transferir_sacola(
+    sacola_id: str,
+    cpf_origem: str,
+    cpf_destino: str,
+    motivo: str,
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_role(["admin"]))
+):
+    """
     Transfere uma sacola de um cliente para outro.
     
     **Casos de uso:**
@@ -240,13 +235,12 @@ def listar_estoque(
     - motivo: Motivo da transferência
     
     **Exemplo:**
-```json
+    json
     {
       "cpf_origem": "12345678900",
       "cpf_destino": "99988877766",
       "motivo": "Cliente perdeu a sacola e autorizou transferência para familiar"
     }
-```
     
     **O que acontece:**
     - Sacola muda de dono
@@ -258,16 +252,6 @@ def listar_estoque(
     - Não é possível desfazer
     - Cliente origem perde acesso à sacola
     """
-)
-def transferir_sacola(
-    sacola_id: str,
-    cpf_origem: str,
-    cpf_destino: str,
-    motivo: str,
-    db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_role(["admin"]))
-):
-    """Transfere sacola de um cliente para outro"""
     
     # Validar motivo
     if not motivo or len(motivo.strip()) < 10:
@@ -368,7 +352,14 @@ def transferir_sacola(
 @router.post(
     "/{sacola_id}/resetar-contador",
     summary="Resetar contador de usos (Admin)",
-    description="""
+)
+def resetar_contador(
+    sacola_id: str,
+    motivo: str,
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_role(["admin"]))
+):
+    """
     Reseta o contador de utilizações de uma sacola para zero.
     
     **OPERAÇÃO SENSÍVEL - USE COM CAUTELA**
@@ -395,11 +386,10 @@ def transferir_sacola(
     - motivo: Motivo detalhado do reset
     
     **Exemplo:**
-```json
+    json
     {
       "motivo": "Erro de sistema registrou 10 usos duplicados. Resetando para recalcular corretamente."
     }
-```
     
     **O que acontece:**
     - Contador de utilizações → 0
@@ -417,14 +407,6 @@ def transferir_sacola(
     - Irreversível - não há como desfazer
     - Use apenas para correções legítimas
     """
-)
-def resetar_contador(
-    sacola_id: str,
-    motivo: str,
-    db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_role(["admin"]))
-):
-    """Reseta contador de utilizações (operação sensível)"""
     
     # Validar motivo (mais rigoroso)
     if not motivo or len(motivo.strip()) < 15:
@@ -506,22 +488,27 @@ def resetar_contador(
 @router.get(
     "/em-risco",
     summary="Identificar sacolas em risco",
-    description="""
+)
+def sacolas_em_risco(
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
+):
+    """
     Lista sacolas com padrões problemáticos que requerem atenção.
     
     **Padrões detectados:**
     
-    ** Sem Uso Prolongado:**
+    **Sem Uso Prolongado:**
     - Sacolas ativas sem uso há mais de 30 dias
     - Motivo: Cliente pode ter esquecido, perdido ou abandonado
     - Ação sugerida: Contato para verificar status
     
-    ** Uso Intenso:**
+    **Uso Intenso:**
     - Sacolas com 20+ usos em menos de 30 dias
     - Motivo: Uso comercial não autorizado ou compartilhamento
     - Ação sugerida: Investigar padrão de uso
     
-    ** Múltiplas Próximas do Limite:**
+    **Múltiplas Próximas do Limite:**
     - Clientes com 3+ sacolas acima de 30 usos
     - Motivo: Acúmulo excessivo sem devolução
     - Ação sugerida: Incentivar devolução
@@ -545,12 +532,6 @@ def resetar_contador(
     - Apenas sacolas ativas
     - Ordenado por gravidade (alta → baixa)
     """
-)
-def sacolas_em_risco(
-    db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
-):
-    """Identifica sacolas com padrões problemáticos"""
     
     # Buscar todas sacolas ativas
     sacolas_ativas = db.query(models.Sacola).filter(

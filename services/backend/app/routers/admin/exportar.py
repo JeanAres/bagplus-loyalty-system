@@ -20,7 +20,15 @@ router = APIRouter(
 @router.get(
     "/clientes",
     summary="Exportar clientes para CSV",
-    description="""
+)
+def exportar_clientes(
+    status: str = None,
+    data_inicio: str = None,
+    data_fim: str = None,
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
+):
+    """
     Gera arquivo CSV com dados de todos os clientes cadastrados.
     
     **Colunas do CSV:**
@@ -38,16 +46,9 @@ router = APIRouter(
     - data_fim: Data final de cadastro (YYYY-MM-DD, opcional)
     
     **Exemplos:**
-```
-    # Todos os clientes
-    GET /api/admin/exportar/clientes
-    
-    # Apenas suspensos
-    GET /api/admin/exportar/clientes?status=suspenso
-    
-    # Cadastrados em março
-    GET /api/admin/exportar/clientes?data_inicio=2026-03-01&data_fim=2026-03-31
-```
+    - **Todos os clientes:** /api/admin/exportar/clientes
+    - **Apenas suspensos:** /api/admin/exportar/clientes?status=suspenso
+    - **Cadastrados em março:** /api/admin/exportar/clientes?data_inicio=2026-03-01&data_fim=2026-03-31
     
     **Quando usar:**
     - Backup de dados
@@ -58,15 +59,6 @@ router = APIRouter(
     **Formato:** CSV (compatível com Excel)  
     **Encoding:** UTF-8 com BOM (abre corretamente no Excel)
     """
-)
-def exportar_clientes(
-    status: str = None,
-    data_inicio: str = None,
-    data_fim: str = None,
-    db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
-):
-    """Exporta clientes para CSV"""
     
     # Query base
     query = db.query(models.Cliente)
@@ -168,7 +160,14 @@ def exportar_clientes(
 @router.get(
     "/sacolas",
     summary="Exportar sacolas para CSV",
-    description="""
+)
+def exportar_sacolas(
+    status: str = None,
+    lote_id: int = None,
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
+):
+    """
     Gera arquivo CSV com dados de todas as sacolas do sistema.
     
     **Colunas do CSV:**
@@ -188,17 +187,10 @@ def exportar_clientes(
     - lote_id: ID do lote (opcional)
     
     **Exemplos:**
-```
-    # Todas as sacolas
-    GET /api/admin/exportar/sacolas
-    
-    # Apenas em estoque
-    GET /api/admin/exportar/sacolas?status=estoque
-    
-    # Sacolas do lote 1
-    GET /api/admin/exportar/sacolas?lote_id=1
-```
-    
+    - **Todas as sacolas:** /api/admin/exportar/sacolas
+    - **Apenas em estoque:** /api/admin/exportar/sacolas?status=estoque
+    - **Sacolas do lote 1:** /api/admin/exportar/sacolas?lote_id=1
+
     **Quando usar:**
     - Inventário completo
     - Auditoria de distribuição
@@ -208,14 +200,6 @@ def exportar_clientes(
     **Formato:** CSV (compatível com Excel)  
     **Encoding:** UTF-8 com BOM
     """
-)
-def exportar_sacolas(
-    status: str = None,
-    lote_id: int = None,
-    db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
-):
-    """Exporta sacolas para CSV"""
     
     # Query base
     query = db.query(models.Sacola)
@@ -316,7 +300,15 @@ def exportar_sacolas(
 @router.get(
     "/usos",
     summary="Exportar registros de uso para CSV",
-    description="""
+)
+def exportar_usos(
+    data_inicio: str = None,
+    data_fim: str = None,
+    cpf: str = None,
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
+):
+    """
     Gera arquivo CSV com histórico completo de utilizações de sacolas.
     
     **Colunas do CSV:**
@@ -332,16 +324,9 @@ def exportar_sacolas(
     - cpf: Filtrar por cliente específico (opcional)
     
     **Exemplos:**
-```
-    # Todos os usos
-    GET /api/admin/exportar/usos
-    
-    # Usos de março
-    GET /api/admin/exportar/usos?data_inicio=2026-03-01&data_fim=2026-03-31
-    
-    # Usos de um cliente
-    GET /api/admin/exportar/usos?cpf=12345678900
-```
+    - **Todos os usos:** /api/admin/exportar/usos
+    - **Usos de março:** /api/admin/exportar/usos?data_inicio=2026-03-01&data_fim=2026-03-31
+    - **Usos de um cliente:** /api/admin/exportar/usos?cpf=12345678900
     
     **Quando usar:**
     - Análise financeira detalhada
@@ -354,15 +339,6 @@ def exportar_sacolas(
     **Encoding:** UTF-8 com BOM  
     **Observação:** Pode gerar arquivo grande em sistemas com muito histórico
     """
-)
-def exportar_usos(
-    data_inicio: str = None,
-    data_fim: str = None,
-    cpf: str = None,
-    db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
-):
-    """Exporta registros de uso para CSV"""
     
     # Query base
     query = db.query(models.RegistroUso).join(models.Sacola)

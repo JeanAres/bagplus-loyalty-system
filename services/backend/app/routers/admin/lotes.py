@@ -19,8 +19,16 @@ router = APIRouter(
 
 @router.post(
     "/importar",
-    summary="Importar lote de sacolas",
-    description="""
+    summary="Importar lote de sacolas"
+)
+def importar_lote_csv(
+    data_fabricacao: str,
+    inicio: int,
+    fim: int,
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
+):
+    """
     Importa um lote de sacolas gerado pelo script gerar_qrcodes.py
     
     **Processo:**
@@ -40,23 +48,13 @@ router = APIRouter(
     - IDs não podem estar duplicados
     
     **Exemplo:**
-```
+
     data_fabricacao: 2026-03-31
     inicio: 1
     fim: 5000
-```
     
     **Observação:** Use os mesmos valores do CSV gerado pelo script
     """
-)
-def importar_lote_csv(
-    data_fabricacao: str,
-    inicio: int,
-    fim: int,
-    db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
-):
-    """Importa lote de sacolas para o banco"""
     
     # Validar data
     try:
@@ -167,7 +165,12 @@ def importar_lote_csv(
 @router.get(
     "/",
     summary="Listar todos os lotes",
-    description="""
+)
+def listar_lotes(
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
+):
+    """
     Lista todos os lotes de sacolas importados no sistema.
     
     **Informações retornadas para cada lote:**
@@ -188,12 +191,6 @@ def importar_lote_csv(
     
     **Observação:** Ordenado do mais recente para o mais antigo
     """
-)
-def listar_lotes(
-    db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
-):
-    """Lista todos os lotes importados"""
     
     lotes = db.query(models.Lote).order_by(models.Lote.data_importacao.desc()).all()
     
@@ -236,12 +233,18 @@ def listar_lotes(
 @router.get(
     "/{lote_id}/estatisticas",
     summary="Estatísticas de performance do lote",
-    description="""
+)
+def estatisticas_lote(
+    lote_id: int, 
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
+):
+    """
     Retorna análise completa de performance de um lote específico.
     
     **Informações retornadas:**
     
-    ** Distribuição:**
+    **Distribuição:**
     - Total de sacolas no lote
     - Quantidade em estoque (nunca distribuídas)
     - Quantidade ativas (em uso)
@@ -249,16 +252,16 @@ def listar_lotes(
     - Taxa de ativação (% distribuídas)
     - Taxa de devolução (% devolvidas)
     
-    ** Tempo de Uso:**
+    **Tempo de Uso:**
     - Tempo médio de uso (dias)
     - Baseado em sacolas devolvidas do lote
     
-    ** Performance Financeira:**
+    **Performance Financeira:**
     - Valor total movimentado pelo lote
     - Valor médio por sacola
     - Total de usos realizados
     
-    ** Top Performers:**
+    **Top Performers:**
     - Top 5 sacolas mais usadas do lote
     - Com cliente associado e utilizações
     
@@ -275,13 +278,6 @@ def listar_lotes(
     - Lote deve existir no sistema
     - Cálculos baseados em dados reais
     """
-)
-def estatisticas_lote(
-    lote_id: int, 
-    db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
-):
-    """Retorna estatísticas completas de um lote"""
     
     # Buscar lote
     lote = db.query(models.Lote).filter(models.Lote.id == lote_id).first()

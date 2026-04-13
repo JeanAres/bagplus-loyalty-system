@@ -18,17 +18,27 @@ router = APIRouter(
 @router.get(
     "/logs",
     summary="Consultar logs de auditoria",
-    description="""
+)
+def consultar_logs(
+    data_inicio: str = None,
+    data_fim: str = None,
+    usuario_id: int = None,
+    acao: str = None,
+    entidade_tipo: str = None,
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
+):
+    """
     Retorna logs de ações administrativas para auditoria.
     
     **Permissão:** Admin ou Gerente
     
     **Filtros disponíveis (opcionais):**
-    - data_inicio: Data inicial (YYYY-MM-DD)
-    - data_fim: Data final (YYYY-MM-DD)
-    - usuario_id: Filtrar por usuário específico
-    - acao: Tipo de ação (suspender_cliente, transferir_sacola, etc)
-    - entidade_tipo: Tipo de entidade (Cliente, Sacola, Usuario)
+    - **data_inicio**: Data inicial (YYYY-MM-DD)
+    - **data_fim**: Data final (YYYY-MM-DD)
+    - **usuario_id**: Filtrar por usuário específico
+    - **acao**: Tipo de ação (suspender_cliente, transferir_sacola, etc)
+    - **entidade_tipo**: Tipo de entidade (Cliente, Sacola, Usuario)
     
     **Informações retornadas:**
     - ID do log
@@ -40,20 +50,12 @@ router = APIRouter(
     - Data e hora
     
     **Exemplos:**
+    - **Todos os logs:** /api/admin/auditoria/logs
+    - **Logs de suspensões:** /api/admin/auditoria/logs?acao=suspender_cliente
+    - **Logs de um usuário específico:** /api/admin/auditoria/logs?usuario_id=1
+    - **Logs de março:** /api/admin/auditoria/logs?data_inicio=2026-03-01&data_fim=2026-03-31
 
-# Todos os logs
-GET /api/admin/auditoria/logs
-
-# Logs de suspensões
-GET /api/admin/auditoria/logs?acao=suspender_cliente
-
-# Logs de um usuário específico
-GET /api/admin/auditoria/logs?usuario_id=1
-
-# Logs de março
-GET /api/admin/auditoria/logs?data_inicio=2026-03-01&data_fim=2026-03-31
-
-**Quando usar:**
+    **Quando usar:**
     - Auditoria de segurança
     - Investigação de ações
     - Compliance e conformidade
@@ -63,17 +65,6 @@ GET /api/admin/auditoria/logs?data_inicio=2026-03-01&data_fim=2026-03-31
     - Logs ordenados por data (mais recente primeiro)
     - Limite de 100 resultados por consulta
     """
-)
-def consultar_logs(
-    data_inicio: str = None,
-    data_fim: str = None,
-    usuario_id: int = None,
-    acao: str = None,
-    entidade_tipo: str = None,
-    db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
-):
-    """Consulta logs de auditoria com filtros"""
     
     # Query base
     query = db.query(models.LogAuditoria)

@@ -19,7 +19,16 @@ router = APIRouter(
 @router.post(
     "/",
     summary="Criar novo usuário",
-    description="""
+)
+def criar_usuario(
+    username: str,
+    password: str,
+    nome: str,
+    role: str,
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_role(["admin"]))
+):
+    """
     Cria um novo usuário no sistema (apenas administradores).
     
     **Permissão:** Admin
@@ -41,16 +50,6 @@ router = APIRouter(
     
     **Observação:** Senha será armazenada com hash bcrypt
     """
-)
-def criar_usuario(
-    username: str,
-    password: str,
-    nome: str,
-    role: str,
-    db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_role(["admin"]))
-):
-    """Cria novo usuário no sistema"""
     
     # Validar username
     if len(username) < 3 or len(username) > 50:
@@ -130,7 +129,12 @@ def criar_usuario(
 @router.get(
     "/",
     summary="Listar todos os usuários",
-    description="""
+)
+def listar_usuarios(
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
+):
+    """
     Lista todos os usuários cadastrados no sistema.
     
     **Permissão:** Admin ou Gerente
@@ -144,12 +148,6 @@ def criar_usuario(
     - Visualizar equipe cadastrada
     - Verificar usuários ativos/inativos
     """
-)
-def listar_usuarios(
-    db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
-):
-    """Lista todos os usuários"""
     
     usuarios = db.query(models.Usuario).all()
     
@@ -174,7 +172,13 @@ def listar_usuarios(
 @router.get(
     "/{usuario_id}",
     summary="Buscar usuário por ID",
-    description="""
+)
+def buscar_usuario(
+    usuario_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
+):
+    """
     Retorna informações de um usuário específico.
     
     **Permissão:** Admin ou Gerente
@@ -186,13 +190,6 @@ def listar_usuarios(
     - Informações completas do usuário
     - Histórico de último login
     """
-)
-def buscar_usuario(
-    usuario_id: int,
-    db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
-):
-    """Busca usuário por ID"""
     
     usuario = db.query(models.Usuario).filter(models.Usuario.id == usuario_id).first()
     
@@ -213,7 +210,17 @@ def buscar_usuario(
 @router.put(
     "/{usuario_id}",
     summary="Editar usuário",
-    description="""
+)
+def editar_usuario(
+    usuario_id: int,
+    nome: str = None,
+    role: str = None,
+    ativo: bool = None,
+    password: str = None,
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_role(["admin"]))
+):
+    """
     Atualiza informações de um usuário.
     
     **Permissão:** Admin
@@ -232,17 +239,6 @@ def buscar_usuario(
     
     **Observação:** Pelo menos um campo deve ser informado
     """
-)
-def editar_usuario(
-    usuario_id: int,
-    nome: str = None,
-    role: str = None,
-    ativo: bool = None,
-    password: str = None,
-    db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_role(["admin"]))
-):
-    """Edita informações do usuário"""
     
     # Buscar usuário
     usuario = db.query(models.Usuario).filter(models.Usuario.id == usuario_id).first()
@@ -326,7 +322,13 @@ def editar_usuario(
 @router.delete(
     "/{usuario_id}",
     summary="Desativar usuário",
-    description="""
+)
+def desativar_usuario(
+    usuario_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_role(["admin"]))
+):
+    """
     Desativa um usuário do sistema (não deleta, apenas marca como inativo).
     
     **Permissão:** Admin
@@ -344,13 +346,6 @@ def editar_usuario(
     - Histórico e logs são preservados
     - Usuário pode ser reativado depois
     """
-)
-def desativar_usuario(
-    usuario_id: int,
-    db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_role(["admin"]))
-):
-    """Desativa usuário (não deleta)"""
     
     # Buscar usuário
     usuario = db.query(models.Usuario).filter(models.Usuario.id == usuario_id).first()

@@ -19,7 +19,17 @@ router = APIRouter(
 @router.post(
     "/{cpf}/suspender",
     summary="Suspender cliente",
-    description="""
+)
+
+def suspender_cliente(
+    cpf: str, 
+    motivo: str, 
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_role(["admin"]))
+
+    ):
+
+    """
     Suspende temporariamente os benefícios de um cliente.
     
     **O que acontece ao suspender:**
@@ -44,17 +54,6 @@ router = APIRouter(
     - Suspensão: Temporária, reversível
     - Bloqueio: Permanente (use com cautela)
     """
-)
-
-def suspender_cliente(
-    cpf: str, 
-    motivo: str, 
-    db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_role(["admin"]))
-
-    ):
-
-    """Suspende benefícios do cliente"""
     
     cliente = db.query(models.Cliente).filter(models.Cliente.cpf == cpf).first()
     if not cliente:
@@ -130,7 +129,15 @@ def suspender_cliente(
 @router.post(
     "/{cpf}/reativar",
     summary="Reativar cliente suspenso",
-    description="""
+)
+def reativar_cliente(
+    cpf: str, 
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_role(["admin"]))
+
+    ):
+
+    """
     Reativa os benefícios de um cliente anteriormente suspenso.
     
     **O que acontece ao reativar:**
@@ -155,15 +162,6 @@ def suspender_cliente(
     - Problema resolvido pelo cliente
     - Suspensão foi acidente/erro
     """
-)
-def reativar_cliente(
-    cpf: str, 
-    db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_role(["admin"]))
-
-    ):
-
-    """Reativa benefícios do cliente"""
     
     cliente = db.query(models.Cliente).filter(models.Cliente.cpf == cpf).first()
     if not cliente:
@@ -223,7 +221,14 @@ def reativar_cliente(
 @router.get(
     "/suspensos",
     summary="Listar clientes suspensos/bloqueados",
-    description="""
+)
+def listar_clientes_suspensos(
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
+    
+    ):
+
+    """
     Lista todos os clientes que estão com benefícios suspensos ou bloqueados.
     
     **Informações retornadas:**
@@ -245,14 +250,6 @@ def reativar_cliente(
     
     **Observação:** Ordenado por data de suspensão (mais recente primeiro)
     """
-)
-def listar_clientes_suspensos(
-    db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
-    
-    ):
-
-    """Lista clientes suspensos ou bloqueados"""
     
     clientes = db.query(models.Cliente).filter(
         models.Cliente.status_beneficios.in_([
