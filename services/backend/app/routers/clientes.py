@@ -2,6 +2,7 @@
 Endpoints relacionados a clientes
 """
 from fastapi import APIRouter, Depends, HTTPException
+from app.middleware.auth import require_role
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from datetime import datetime
@@ -548,10 +549,71 @@ def validar_cliente(cpf: str, db: Session = Depends(get_db)):
             "motivo_suspensao": cliente.motivo_suspensao if cliente.status_beneficios != models.StatusBeneficios.ativo else None
         }
     }
+   
+@router.post("/validar-cpf", summary="Validar CPF")
+def validar_cpf_endpoint(cpf: str):
+    """
+    Valida se um CPF é válido (formato e dígitos verificadores).
+    
+    - **cpf**: CPF com 11 dígitos (apenas números)
+    
+    **Retorna:**
+    - valido: true/false
+    - mensagem: Descrição do resultado
+    
+    **Quando usar:**
+    - Antes de cadastrar cliente (validar CPF digitado)
+    - Validação em formulários
+    - Verificação de dados
+    
+    **Exemplos de CPF válido:**
+    - 12345678909
+    - 11144477735
+    
+    **Exemplos de CPF inválido:**
+    - 11111111111 (todos dígitos iguais)
+    - 12345678900 (dígitos verificadores incorretos)
+    """
+    from validate_docbr import CPF
+    
+    # Validar comprimento
+    if len(cpf) != 11:
+        return {
+            "cpf": cpf,
+            "valido": False,
+            "mensagem": "CPF deve ter exatamente 11 dígitos"
+        }
+    
+    # Validar se são apenas números
+    if not cpf.isdigit():
+        return {
+            "cpf": cpf,
+            "valido": False,
+            "mensagem": "CPF deve conter apenas números"
+        }
+    
+    validador = CPF()
+    
+    # Validar dígitos verificadores
+    cpf_valido = validador.validate(cpf)
+    
+    if cpf_valido:
+        return {
+            "cpf": cpf,
+            "valido": True,
+            "mensagem": "CPF válido"
+        }
+    else:
+        return {
+            "cpf": cpf,
+            "valido": False,
+            "mensagem": "CPF inválido (dígitos verificadores incorretos)"
+        }
 
 @router.delete(
     "/{cpf}",
     summary="Excluir cliente (restritivo)",
+    dependencies=[Depends(require_role(["admin"]))],
     description="""
     Exclui um cliente do sistema com validações restritivas.
     
