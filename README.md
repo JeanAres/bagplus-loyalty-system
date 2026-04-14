@@ -79,6 +79,7 @@ Status: Quando rodando
 - **Validação de intervalo** - Mínimo 4 horas entre usos da mesma sacola
 - **Valor mínimo de compra** - R$ 15,00 por transação
 - **Validação de checksum dupla** - No QR Code e no banco de dados
+- **Validação de CPF** - Formato e dígitos verificadores com validate-docbr
 
 ### Detecção Automática de Fraudes
 - **Valores diferentes no mesmo dia** - Alerta se cliente usa múltiplas sacolas com valores variados
@@ -91,8 +92,10 @@ Status: Quando rodando
 - **Bloqueio de uso** - Clientes suspensos não podem usar sacolas
 - **Histórico completo** - Timeline de eventos do cliente
 - **Busca por nome** - Busca parcial e case-insensitive
-- **Validação de CPF** - Verificar existência sem criar cadastro
+- **Validação de CPF** - Verificar formato e dígitos verificadores (validate-docbr)
+- **Validação de existência** - Verificar se cliente existe sem criar cadastro
 - **Estatísticas por cliente** - Total gasto, valor médio, total de usos
+- **Exclusão restritiva** - DELETE protegido por role admin
 
 ### Sistema de Descontos
 - **Desconto por Fidelidade** - Marcos: 10, 20, 30, 40 usos
@@ -243,8 +246,8 @@ git pull origin dev
 sudo docker-compose up -d --build backend-staging
 
 # 7. Testar em staging
- Acessar: https://staging.bagplus.com.br/docs
- Testar com dados FAKE
+# Acessar: https://staging.bagplus.com.br/docs
+# Testar com dados FAKE
 
 # ==========================================
 # FASE 3: APROVAÇÃO PARA PRODUÇÃO
@@ -271,8 +274,8 @@ git pull origin main
 sudo docker-compose up -d --build backend-prod
 
 # 12. Verificar em produção
- Acessar: https://api.bagplus.com.br/docs
- Clientes podem usar!
+# Acessar: https://api.bagplus.com.br/docs
+# Clientes podem usar!
 ```
 
 ---
@@ -284,7 +287,7 @@ sudo docker-compose up -d --build backend-prod
 docker-compose ps
 
 # Ver logs
-docker-compose logs backend           # Produção
+docker-compose logs backend-prod      # Produção
 docker-compose logs backend-staging   # Staging
 
 # Parar containers
@@ -302,6 +305,8 @@ docker-compose down
 docker system prune -a
 docker-compose up -d --build
 ```
+
+---
 
 ## Autenticação JWT
 
@@ -366,34 +371,34 @@ Authorization: Bearer eyJ...
 ### Sistema de Roles e Permissões
 
 #### 🔴 Admin (Acesso Total)
-- Todos os endpoints administrativos
-- Criar, editar e desativar usuários
-- Suspender e reativar clientes
-- Transferir sacolas entre clientes
-- Resetar contador de utilizações
-- Todos relatórios e exportações
-- Ver logs de auditoria
+- ✅ Todos os endpoints administrativos
+- ✅ Criar, editar e desativar usuários
+- ✅ Suspender e reativar clientes
+- ✅ Transferir sacolas entre clientes
+- ✅ Resetar contador de utilizações
+- ✅ Todos relatórios e exportações
+- ✅ Ver logs de auditoria
 
 #### 🟡 Gerente (Acesso Gerencial)
-- Dashboard e relatórios
-- Importar e gerenciar lotes
-- Listar e resolver alertas
-- Exportar dados (CSV)
-- Consultar estoque
-- Listar usuários (read-only)
-- Ver logs de auditoria
-- Suspender/reativar clientes
-- Transferir sacolas
-- Resetar contador
-- Criar/editar usuários
+- ✅ Dashboard e relatórios
+- ✅ Importar e gerenciar lotes
+- ✅ Listar e resolver alertas
+- ✅ Exportar dados (CSV)
+- ✅ Consultar estoque
+- ✅ Listar usuários (read-only)
+- ✅ Ver logs de auditoria
+- ✅ Suspender/reativar clientes
+- ✅ Transferir sacolas
+- ✅ Resetar contador
+- ❌ Criar/editar usuários
 
 #### 🟢 Caixa (Operacional Apenas)
-- Cadastrar clientes
-- Ativar sacolas
-- Registrar uso de sacolas
-- Devolver sacolas
-- Buscar clientes e sacolas
-- Nenhum acesso a endpoints admin
+- ✅ Cadastrar clientes
+- ✅ Ativar sacolas
+- ✅ Registrar uso de sacolas
+- ✅ Devolver sacolas
+- ✅ Buscar clientes e sacolas
+- ❌ Nenhum acesso a endpoints admin
 
 ---
 
@@ -495,6 +500,7 @@ bagplus-loyalty-system/
 - **Pydantic** - Validação de dados
 - **Python-dotenv** - Gerenciamento de variáveis de ambiente
 - **python-dateutil** - Cálculos de datas para analytics MoM
+- **validate-docbr** - Validação de CPF e CNPJ
 
 ### Autenticação e Segurança
 - **python-jose[cryptography]** - Tokens JWT
@@ -518,14 +524,14 @@ bagplus-loyalty-system/
 
 ---
 
-## API Endpoints (52 total)
+## API Endpoints (53 total)
 
 > **Documentação completa e interativa:**
 > - Produção: `https://api.bagplus.com.br/docs`
 > - Staging: `https://staging.bagplus.com.br/docs`
 > - Local: `http://localhost:8000/docs`
 
-### Clientes (8 endpoints - Públicos)
+### Clientes (9 endpoints - Públicos)
 ### Sacolas (7 endpoints - Públicos)
 ### Autenticação (3 endpoints - Públicos)
 ### Admin - Lotes (3 endpoints - Admin + Gerente)
@@ -537,11 +543,9 @@ bagplus-loyalty-system/
 ### Admin - Usuários (5 endpoints - Variado)
 ### Admin - Auditoria (1 endpoint - Admin + Gerente)
 
-*(Detalhamento completo dos 52 endpoints disponível em `/docs` de cada ambiente)*
+*(Detalhamento completo dos 53 endpoints disponível em `/docs` de cada ambiente)*
 
 ---
-<!-- PARTE 3 DE 3 -->
-<!-- CONTINUAÇÃO DA PARTE 2 -->
 
 ## Banco de Dados
 
@@ -866,8 +870,8 @@ Este é um projeto comercial proprietário. O código está disponível para ava
 
 ---
 
-**Versão:** v0.90-beta  
-**Endpoints:** 52 funcionais  
-**Atualizado:** 11/04/2026  
+**Versão:** v0.91-beta  
+**Endpoints:** 53 funcionais  
+**Atualizado:** 14/04/2026  
 **Arquitetura:** Modular Monorepo + Docker  
 **Status:** 🟢 Produção Online (AWS São Paulo)
