@@ -6,6 +6,8 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from datetime import datetime
 from app.db import models
+from fastapi import Request
+from app.core.audit import registrar_log
 from app.core.security import verify_password, create_access_token
 from app.middleware.auth import get_current_user
 
@@ -22,6 +24,8 @@ router = APIRouter(
 def login(
     username: str,
     password: str,
+    terminal: str = None,
+    request: Request = None,
     db: Session = Depends(get_db)
 ):
     """
@@ -30,6 +34,7 @@ def login(
     **Credenciais:**
     - username: Nome de usuário
     - password: Senha
+    - terminal: Terminal de trabalho (opcional - ex: caixa 1, caixa 2)
     
     **Retorna:**
     - access_token: Token JWT para usar nas requisições
@@ -44,7 +49,9 @@ def login(
     4. Clique em "Authorize"
     5. Agora pode usar endpoints protegidos
     
-    **Observação:** Token válido por 24 horas em desenvolvimento
+    **Observação:** 
+    - Token válido por 24 horas para admin/gerente
+    - Token válido por 12 horas para caixa (turno de trabalho)
     """
     
     # Buscar usuário
@@ -78,23 +85,48 @@ def login(
     user.ultimo_login = datetime.now()
     db.commit()
     
+    # Determinar expiração baseado na role
+    if user.role == "caixa":
+        expires_hours = 12  # Caixas: 12 horas (turno)
+    else:
+        expires_hours = 24  # Admin/Gerente: 24 horas
+    
+    expires_seconds = expires_hours * 3600
+    
     # Criar token
     access_token = create_access_token(
         data={
             "sub": user.username,
-            "role": user.role
-        }
+            "role": user.role,
+            "terminal": terminal
+        },
+        expires_hours=expires_hours
     )
-    
+    # Registrar login no log de auditoria
+    registrar_log(
+        db=db,
+        usuario=user,
+        acao="login",
+        entidade_tipo="Usuario",
+        entidade_id=str(user.id),
+        detalhes={
+            "terminal": terminal,
+            "role": user.role,
+            "expires_hours": expires_hours
+        },
+        ip_address=request.client.host if request else None
+    )
+
     return {
         "access_token": access_token,
         "token_type": "bearer",
-        "expires_in": 86400,  # 24 horas
+        "expires_in": expires_seconds,
         "user": {
             "id": user.id,
             "username": user.username,
             "nome": user.nome,
-            "role": user.role
+            "role": user.role,
+            "terminal": terminal
         }
     }
 

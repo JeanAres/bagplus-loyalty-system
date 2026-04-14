@@ -67,7 +67,7 @@ def criar_usuario(
     
     # Validar role
     try:
-        role_enum = models.RoleUsuario(role)
+        role_enum = models.UserRole(role)
     except ValueError:
         raise HTTPException(
             status_code=400,
@@ -264,7 +264,7 @@ def editar_usuario(
     # Atualizar role
     if role is not None:
         try:
-            role_enum = models.RoleUsuario(role)
+            role_enum = models.UserRole(role)
             alteracoes["role_anterior"] = usuario.role.value
             alteracoes["role_novo"] = role
             usuario.role = role_enum

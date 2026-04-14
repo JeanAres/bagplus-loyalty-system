@@ -23,6 +23,7 @@ def consultar_logs(
     data_inicio: str = None,
     data_fim: str = None,
     usuario_id: int = None,
+    usuario_username: str = None,
     acao: str = None,
     entidade_tipo: str = None,
     db: Session = Depends(get_db),
@@ -34,11 +35,12 @@ def consultar_logs(
     **Permissão:** Admin ou Gerente
     
     **Filtros disponíveis (opcionais):**
-    - **data_inicio**: Data inicial (YYYY-MM-DD)
-    - **data_fim**: Data final (YYYY-MM-DD)
-    - **usuario_id**: Filtrar por usuário específico
-    - **acao**: Tipo de ação (suspender_cliente, transferir_sacola, etc)
-    - **entidade_tipo**: Tipo de entidade (Cliente, Sacola, Usuario)
+    - data_inicio: Data inicial (YYYY-MM-DD)
+    - data_fim: Data final (YYYY-MM-DD)
+    - usuario_id: Filtrar por ID do usuário (numérico)
+    - usuario_username: Filtrar por username do usuário (texto - ex: caixa_teste)
+    - acao: Tipo de ação (login, suspender_cliente, registrar_venda, etc)
+    - entidade_tipo: Tipo de entidade (Cliente, Sacola, Usuario)
     
     **Informações retornadas:**
     - ID do log
@@ -93,6 +95,12 @@ def consultar_logs(
     # Filtrar por usuário
     if usuario_id:
         query = query.filter(models.LogAuditoria.usuario_id == usuario_id)
+
+    # Filtrar por username (busca parcial case-insensitive)
+    if usuario_username:
+        query = query.filter(
+        models.LogAuditoria.usuario_username.ilike(f"%{usuario_username}%")
+    )
     
     # Filtrar por ação
     if acao:
@@ -146,6 +154,7 @@ def consultar_logs(
             "data_inicio": data_inicio,
             "data_fim": data_fim,
             "usuario_id": usuario_id,
+            "usuario_username": usuario_username,
             "acao": acao,
             "entidade_tipo": entidade_tipo
         },
