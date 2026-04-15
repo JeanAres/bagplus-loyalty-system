@@ -30,8 +30,8 @@ build/
 storage/qrcodes/csv/*.csv
 storage/qrcodes/pdf/*.pdf
 
-# Manter apenas o controle de sequência
-!storage/qrcodes/ultimo_id.txt
+# Arquivos de controle de sequência (estado local - não versionar)
+storage/qrcodes/ultimo_id.txt
 
 # Exportações CSV
 storage/exports/*.csv
@@ -156,4 +156,3 @@ data-prod/
 data-staging/
 storage-prod/
 storage-staging/
-

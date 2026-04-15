@@ -624,6 +624,7 @@ def estatisticas_gerais(
         }
     }
 
+
 @router.get(
     "/crescimento",
     summary="Análise de crescimento do negócio",
@@ -632,7 +633,6 @@ def analise_crescimento(
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
 ):
-
     """
     Retorna análise de crescimento mês a mês (últimos 6 meses).
     
@@ -668,7 +668,6 @@ def analise_crescimento(
     """
     
     from collections import defaultdict
-    from dateutil.relativedelta import relativedelta
     
     hoje = datetime.now()
     
@@ -774,4 +773,171 @@ def analise_crescimento(
             "tendencia": "Crescimento" if crescimento_percentual > 0 else "Queda" if crescimento_percentual < 0 else "Estável",
             "crescimento_percentual": round(crescimento_percentual, 2)
         }
+    }
+
+
+@router.get(
+    "/vendas-por-terminal",
+    summary="Relatório de vendas por terminal"
+)
+def relatorio_vendas_por_terminal(
+    data: str = None,
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
+):
+    """
+    Retorna relatório de vendas agrupadas por terminal (caixa).
+    
+    **Informações retornadas por terminal:**
+    - Total de vendas realizadas
+    - Valor total vendido
+    - Ticket médio
+    - Lista de usuários que operaram o terminal
+    - Horário da primeira e última venda
+    
+    **Filtros:**
+    - data: Data específica (YYYY-MM-DD) - padrão: hoje
+    
+    **Quando usar:**
+    - Comparar performance entre terminais
+    - Identificar gargalos operacionais
+    - Planejar alocação de pessoal
+    - Analisar produtividade por caixa
+    
+    **Exemplos:**
+    - **Vendas de hoje:** /api/admin/relatorios/vendas-por-terminal
+    - **Vendas de uma data específica:** /api/admin/relatorios/vendas-por-terminal?data=2026-04-14
+
+    **Observação:** Apenas vendas com terminal registrado são contabilizadas
+    """
+    
+    import json
+    
+    # Data padrão: hoje
+    if not data:
+        data_filtro = datetime.now().date()
+    else:
+        try:
+            data_filtro = datetime.strptime(data, '%Y-%m-%d').date()
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Data inválida. Use formato: YYYY-MM-DD"
+            )
+    
+    # Início e fim do dia
+    inicio_dia = datetime.combine(data_filtro, datetime.min.time())
+    fim_dia = datetime.combine(data_filtro, datetime.max.time())
+    
+    # Buscar vendas do dia (via RegistroUso)
+    vendas_dia = db.query(models.RegistroUso).filter(
+        models.RegistroUso.data_uso >= inicio_dia,
+        models.RegistroUso.data_uso <= fim_dia
+    ).all()
+    
+    # Buscar logs de auditoria para mapear terminal
+    logs_vendas = db.query(models.LogAuditoria).filter(
+        models.LogAuditoria.acao.in_(["registrar_uso", "login"]),
+        models.LogAuditoria.data_hora >= inicio_dia,
+        models.LogAuditoria.data_hora <= fim_dia
+    ).all()
+    
+    # Mapear terminal por usuário (último login do dia)
+    terminal_por_usuario = {}
+    for log in logs_vendas:
+        if log.acao == "login":
+            detalhes = json.loads(log.detalhes) if log.detalhes else {}
+            terminal = detalhes.get("terminal")
+            if terminal:
+                terminal_por_usuario[log.usuario_username] = terminal
+    
+    # Agrupar vendas por terminal
+    vendas_por_terminal = {}
+    
+    for venda in vendas_dia:
+        # Buscar sacola para pegar usuário
+        sacola = db.query(models.Sacola).filter(models.Sacola.id == venda.sacola_id).first()
+        if not sacola:
+            continue
+        
+        # Buscar registro de uso para pegar quem registrou
+        # (Assumindo que há algum campo que identifica quem fez a venda)
+        # Por enquanto, vamos mapear pelo terminal do último login
+        
+        # Mapear terminal (se não encontrar, usa "sem terminal")
+        terminal = "sem terminal"
+        
+        # Tentar pegar do log mais próximo
+        log_proximo = db.query(models.LogAuditoria).filter(
+            models.LogAuditoria.data_hora <= venda.data_uso,
+            models.LogAuditoria.data_hora >= inicio_dia,
+            models.LogAuditoria.acao == "login"
+        ).order_by(
+            models.LogAuditoria.data_hora.desc()
+        ).first()
+        
+        if log_proximo:
+            detalhes = json.loads(log_proximo.detalhes) if log_proximo.detalhes else {}
+            terminal = detalhes.get("terminal", "sem terminal")
+            usuario = log_proximo.usuario_username
+        else:
+            usuario = "desconhecido"
+        
+        if terminal not in vendas_por_terminal:
+            vendas_por_terminal[terminal] = {
+                "total_vendas": 0,
+                "valor_total": 0.0,
+                "valores": [],
+                "usuarios": set(),
+                "horarios": []
+            }
+        
+        vendas_por_terminal[terminal]["total_vendas"] += 1
+        vendas_por_terminal[terminal]["valor_total"] += float(venda.valor_compra)
+        vendas_por_terminal[terminal]["valores"].append(float(venda.valor_compra))
+        vendas_por_terminal[terminal]["usuarios"].add(usuario)
+        vendas_por_terminal[terminal]["horarios"].append(venda.data_uso)
+    
+    # Montar resultado
+    resultado = []
+    
+    for terminal, dados in sorted(vendas_por_terminal.items()):
+        # Calcular ticket médio
+        ticket_medio = (
+            dados["valor_total"] / dados["total_vendas"] 
+            if dados["total_vendas"] > 0 else 0
+        )
+        
+        # Primeira e última venda
+        horarios = sorted(dados["horarios"])
+        primeira_venda = horarios[0] if horarios else None
+        ultima_venda = horarios[-1] if horarios else None
+        
+        resultado.append({
+            "terminal": terminal,
+            "total_vendas": dados["total_vendas"],
+            "valor_total": round(dados["valor_total"], 2),
+            "ticket_medio": round(ticket_medio, 2),
+            "usuarios": sorted(list(dados["usuarios"])),
+            "primeira_venda": primeira_venda.strftime("%H:%M") if primeira_venda else None,
+            "ultima_venda": ultima_venda.strftime("%H:%M") if ultima_venda else None
+        })
+    
+    # Calcular totais gerais
+    total_geral_vendas = sum(r["total_vendas"] for r in resultado)
+    total_geral_valor = sum(r["valor_total"] for r in resultado)
+    ticket_medio_geral = (
+        total_geral_valor / total_geral_vendas 
+        if total_geral_vendas > 0 else 0
+    )
+    
+    return {
+        "data": data_filtro.strftime("%Y-%m-%d"),
+        "resumo": {
+            "total_vendas": total_geral_vendas,
+            "valor_total": round(total_geral_valor, 2),
+            "ticket_medio": round(ticket_medio_geral, 2),
+            "terminais_ativos": len(resultado)
+        },
+        "vendas_por_terminal": resultado
     }

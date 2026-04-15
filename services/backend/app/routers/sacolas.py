@@ -1,7 +1,8 @@
 """
 Endpoints relacionados a sacolas
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
+from app.middleware.auth import get_current_user
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from datetime import datetime, timedelta
@@ -17,6 +18,7 @@ from app.core.notifications import (
     notificar_sacola_proximo_limite,
     notificar_desconto_disponivel
 )
+from app.core.audit import registrar_log
 
 router = APIRouter(
     prefix="/api/sacolas",
@@ -387,6 +389,8 @@ def ativar_sacolas_lote(
 def registrar_uso(
     sacola_id: str,
     valor_compra: str,
+    request: Request,
+    current_user: models.Usuario = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -486,6 +490,28 @@ def registrar_uso(
     
     db.commit()
     db.refresh(sacola)
+    
+    # ========== LOG DE AUDITORIA ==========
+    try:
+        terminal = getattr(current_user, 'terminal', None)
+
+        registrar_log(
+            db=db,
+            usuario=current_user,
+            acao="registrar_uso",
+            entidade_tipo="Sacola",
+            entidade_id=sacola_id,
+            detalhes={
+                "valor_compra": valor_float,
+                "utilizacoes": sacola.utilizacoes,
+                "cliente_cpf": sacola.cliente_cpf, 
+                "terminal": terminal
+            },
+            ip_address=request.client.host if request.client else None
+        )
+        db.commit()
+    except Exception as e:
+        print(f"Erro ao registrar log de auditoria: {e}")
     
     # ========== NOTIFICAÇÕES AUTOMÁTICAS ==========
     

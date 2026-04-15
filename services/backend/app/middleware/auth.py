@@ -19,7 +19,10 @@ def get_current_user(
     db: Session = Depends(get_db)
 ) -> models.Usuario:
     """
-    Valida token JWT e retorna usuário atual
+    Valida token JWT e retorna usuário atual com terminal do token
+    
+    **Retorna:**
+    - Usuario do banco com atributo adicional 'terminal' do payload JWT
     
     Raises:
         HTTPException 401: Token inválido ou expirado
@@ -52,6 +55,8 @@ def get_current_user(
     
     if not user.ativo:
         raise HTTPException(status_code=403, detail="Usuário inativo")
+    
+    user.terminal = payload.get("terminal")
     
     return user
 
