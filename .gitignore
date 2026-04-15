@@ -156,3 +156,7 @@ data-prod/
 data-staging/
 storage-prod/
 storage-staging/
+
+# Banco SQLite (não versionar)
+services/backend/bagplus.db
+services/backend/data/bagplus.db
