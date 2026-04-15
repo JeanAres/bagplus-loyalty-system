@@ -4,7 +4,7 @@
 > para avaliação e portfólio, mas **uso comercial requer licença**. 
 > Entre em contato para implementação: jean06soares@gmail.com
 
-Sistema completo de gerenciamento de sacolas reutilizáveis com programa de recompensas, autenticação JWT com roles, QR Codes com segurança anti-falsificação, detecção automática de fraudes, sistema de suspensão de clientes, relatórios gerenciais avançados, logs de auditoria e exportação de dados.
+Sistema completo de gerenciamento de sacolas reutilizáveis com programa de recompensas, autenticação JWT com roles, sistema de terminais, QR Codes com segurança anti-falsificação, detecção automática de fraudes, sistema de suspensão de clientes, relatórios gerenciais avançados, logs de auditoria e exportação de dados.
 
 > Para entender o conceito e proposta do negócio, veja [PROPOSTA.md](PROPOSTA.md)
 
@@ -66,13 +66,35 @@ Status: Quando rodando
 ## Funcionalidades Implementadas
 
 ### Autenticação e Controle de Acesso
-- **Sistema JWT completo** - Autenticação com tokens de 24h
+- **Sistema JWT completo** - Autenticação com tokens (12h caixa, 24h admin/gerente)
+- **Sistema de terminais** - Rastreamento por caixa (terminal no token JWT)
 - **Gestão de usuários** - Criar, editar, listar e desativar usuários
 - **Sistema de roles** - Admin, Gerente, Caixa com permissões granulares
-- **31 endpoints protegidos** - Controle de acesso por role
-- **Logs de auditoria** - Rastreamento completo de ações administrativas
+- **35 endpoints protegidos** - Controle de acesso por role
+- **Logs de auditoria** - Rastreamento completo: quem, quando, onde (terminal), de onde (IP)
 - **Token de desenvolvimento** - Gerado automaticamente ao iniciar servidor
 - **Middleware de autenticação** - Validação automática em todos endpoints admin
+
+### Sistema de Terminais
+- **Identificação por caixa** - 5 terminais configurados (Caixa 1-5)
+- **Terminal no login** - Campo obrigatório para caixas
+- **Terminal no token JWT** - Informação anexada ao payload do token
+- **Rastreabilidade completa** - Logs capturam terminal + IP + usuário
+- **Expiração diferenciada** - 12h para caixas, 24h para admin/gerente
+- **Relatórios por terminal** - Endpoint vendas-por-terminal com totais, ticket médio, usuários
+- **Autenticação obrigatória** - Registro de uso requer token JWT válido
+
+### Geração e Gestão de QR Codes
+- **API REST completa** - 4 endpoints para geração e gerenciamento
+- **Módulo reutilizável** - Lógica compartilhada entre API e CLI
+- **Sequência sincronizada** - API e script CLI compartilham ultimo_id.txt
+- **Geração via Swagger** - Interface web para não-técnicos
+- **Script CLI** - Geração via terminal para admins avançados
+- **Controle de acesso** - Apenas admins podem gerar QR codes
+- **Auditoria automática** - Logs registram quem gerou, quando, quantos
+- **Download direto** - CSV e PDF via endpoints dedicados
+- **Histórico de lotes** - Rastreamento completo de todos os lotes gerados
+- **Formatos flexíveis** - CSV (importação), PDF (gráfica) ou ambos
 
 ### Segurança e Validação
 - **QR Codes com Checksum SHA256** - Proteção anti-falsificação
@@ -105,7 +127,7 @@ Status: Quando rodando
   - Vermelho (26-40 usos, até 90 dias): R$ 10,00
 
 ### Gerenciamento de Lotes
-- **Geração em massa de QR Codes** - Até 5.000 sacolas por lote
+- **Geração em massa de QR Codes** - Até 10.000 sacolas por lote
 - **Importação de lotes** - Via API com recalculo automático de checksums
 - **Rastreamento completo** - Data de fabricação, intervalo de IDs, quantidade
 - **Controle de estoque** - Consulta de disponibilidade por lote
@@ -114,6 +136,7 @@ Status: Quando rodando
 ### Relatórios e Analytics
 - **Dashboard administrativo** - Visão geral completa do negócio
 - **Relatórios de vendas** - Por período com detalhamento diário
+- **Vendas por terminal** - Total, ticket médio, usuários por caixa
 - **Estatísticas gerais** - Taxa de devolução, recordes, crescimento
 - **Análise Month-over-Month** - Crescimento com python-dateutil
 - **Top performers** - Clientes que mais usam e mais gastam
@@ -128,9 +151,10 @@ Status: Quando rodando
 
 ### Auditoria e Compliance
 - **Logs automáticos** - Todas ações admin registradas automaticamente
-- **Rastreamento de usuário** - Quem fez o quê, quando e por quê
-- **Consulta de logs** - Filtros por data, usuário, ação, entidade
+- **Rastreamento completo** - Usuário, terminal, IP, timestamp
+- **Consulta de logs** - Filtros por data, usuário (busca parcial), ação, entidade
 - **Detalhes em JSON** - Informações completas sobre cada operação
+- **Filtro username** - Busca parcial case-insensitive (ex: "joão" encontra "joão.silva")
 
 ---
 
@@ -338,6 +362,15 @@ Válido por: 24 horas
 
 ### Fazer Login Manualmente
 
+**Com terminal (caixas):**
+```http
+POST /api/auth/login
+Content-Type: application/x-www-form-urlencoded
+
+username=caixa_teste&password=senha123&terminal=caixa 2
+```
+
+**Sem terminal (admin/gerente):**
 ```http
 POST /api/auth/login
 Content-Type: application/x-www-form-urlencoded
@@ -350,12 +383,13 @@ username=DEV_ADMIN_USERNAME&password=DEV_ADMIN_PASSWORD
 {
   "access_token": "eyJ...",
   "token_type": "bearer",
-  "expires_in": 86400,
+  "expires_in": 43200,
   "user": {
-    "id": 1,
-    "username": "DEV_ADMIN_USERNAME",
-    "nome": "Administrador de Desenvolvimento",
-    "role": "admin",
+    "id": 2,
+    "username": "caixa_teste",
+    "nome": "Caixa Teste",
+    "role": "caixa",
+    "terminal": "caixa 2",
     "ativo": true
   }
 }
@@ -364,8 +398,14 @@ username=DEV_ADMIN_USERNAME&password=DEV_ADMIN_PASSWORD
 ### Usar Token nos Endpoints Protegidos
 
 ```http
-GET /api/admin/usuarios
+POST /api/sacolas/registrar-uso
 Authorization: Bearer eyJ...
+Content-Type: application/json
+
+{
+  "sacola_id": "BAG-00001",
+  "valor_compra": "125,50"
+}
 ```
 
 ### Sistema de Roles e Permissões
@@ -373,6 +413,7 @@ Authorization: Bearer eyJ...
 #### 🔴 Admin (Acesso Total)
 - ✅ Todos os endpoints administrativos
 - ✅ Criar, editar e desativar usuários
+- ✅ Gerar QR Codes (API)
 - ✅ Suspender e reativar clientes
 - ✅ Transferir sacolas entre clientes
 - ✅ Resetar contador de utilizações
@@ -381,7 +422,10 @@ Authorization: Bearer eyJ...
 
 #### 🟡 Gerente (Acesso Gerencial)
 - ✅ Dashboard e relatórios
+- ✅ Relatório vendas-por-terminal
 - ✅ Importar e gerenciar lotes
+- ✅ Download de QR Codes gerados
+- ✅ Histórico de lotes de QR Codes
 - ✅ Listar e resolver alertas
 - ✅ Exportar dados (CSV)
 - ✅ Consultar estoque
@@ -391,13 +435,15 @@ Authorization: Bearer eyJ...
 - ✅ Transferir sacolas
 - ✅ Resetar contador
 - ❌ Criar/editar usuários
+- ❌ Gerar QR Codes
 
 #### 🟢 Caixa (Operacional Apenas)
 - ✅ Cadastrar clientes
 - ✅ Ativar sacolas
-- ✅ Registrar uso de sacolas
+- ✅ Registrar uso de sacolas (com autenticação obrigatória)
 - ✅ Devolver sacolas
 - ✅ Buscar clientes e sacolas
+- ✅ Login com terminal
 - ❌ Nenhum acesso a endpoints admin
 
 ---
@@ -429,7 +475,7 @@ bagplus-loyalty-system/
 │       ├── app/              # Aplicação modular
 │       │   ├── main.py       # Configuração FastAPI
 │       │   ├── routers/      # Endpoints da API
-│       │   │   ├── admin/   # Endpoints administrativos (9 módulos)
+│       │   │   ├── admin/   # Endpoints administrativos (10 módulos)
 │       │   │   │   ├── lotes.py
 │       │   │   │   ├── suspensao.py
 │       │   │   │   ├── alertas.py
@@ -438,7 +484,8 @@ bagplus-loyalty-system/
 │       │   │   │   ├── exportar.py
 │       │   │   │   ├── usuarios.py
 │       │   │   │   ├── auditoria.py
-│       │   │   │   └── notificacoes.py
+│       │   │   │   ├── notificacoes.py
+│       │   │   │   └── qrcodes.py
 │       │   │   ├── clientes.py
 │       │   │   ├── sacolas.py
 │       │   │   ├── notificacoes.py
@@ -447,7 +494,8 @@ bagplus-loyalty-system/
 │       │   │   ├── security.py
 │       │   │   ├── audit.py
 │       │   │   ├── helpers.py
-│       │   │   └── notifications.py
+│       │   │   ├── notifications.py
+│       │   │   └── qrcode_generator.py
 │       │   ├── db/           # Banco de dados
 │       │   │   ├── models.py
 │       │   │   └── session.py
@@ -474,7 +522,7 @@ bagplus-loyalty-system/
 │
 ├── scripts/                   # Scripts auxiliares
 │   ├── qrcodes/
-│   │   ├── gerar_qrcodes.py
+│   │   ├── gerar_qrcodes.py  # Script CLI (usa módulo core)
 │   │   └── limpar_qrcodes.py
 │   └── database/
 │       └── seed_data.py
@@ -524,7 +572,7 @@ bagplus-loyalty-system/
 
 ---
 
-## API Endpoints (53 total)
+## API Endpoints (57 total)
 
 > **Documentação completa e interativa:**
 > - Produção: `https://api.bagplus.com.br/docs`
@@ -537,19 +585,21 @@ bagplus-loyalty-system/
 ### Admin - Lotes (3 endpoints - Admin + Gerente)
 ### Admin - Clientes (3 endpoints - Variado)
 ### Admin - Alertas (2 endpoints - Admin + Gerente)
-### Admin - Relatórios (4 endpoints - Admin + Gerente)
+### Admin - Relatórios (5 endpoints - Admin + Gerente)
 ### Admin - Sacolas (6 endpoints - Variado)
 ### Admin - Exportação (3 endpoints - Admin + Gerente)
 ### Admin - Usuários (5 endpoints - Variado)
 ### Admin - Auditoria (1 endpoint - Admin + Gerente)
+### Admin - Notificações (3 endpoints - Admin + Gerente)
+### Admin - QR Codes (4 endpoints - Admin/Gerente)
 
-*(Detalhamento completo dos 53 endpoints disponível em `/docs` de cada ambiente)*
+*(Detalhamento completo dos 57 endpoints disponível em `/docs` de cada ambiente)*
 
 ---
 
 ## Banco de Dados
 
-### Tabelas (7 total)
+### Tabelas (8 total)
 
 #### clientes
 - cpf (PK)
@@ -610,55 +660,110 @@ bagplus-loyalty-system/
 - usuario_id (FK)
 - usuario_username
 - acao (string)
-- entidade_tipo (Cliente/Sacola/Usuario/Alerta/Lote)
+- entidade_tipo (Cliente/Sacola/Usuario/Alerta/Lote/QRCode)
 - entidade_id (string)
-- detalhes (JSON)
+- detalhes (JSON) - Inclui terminal, IP, dados específicos
 - ip_address
 - data_hora
+
+#### notificacoes
+- id (PK)
+- cliente_cpf (FK)
+- tipo (enum)
+- titulo
+- mensagem
+- lida (bool)
+- data_criacao
 
 ---
 
 ## Gerando QR Codes
 
-### 1. Configurar Quantidade
-```bash
-cd scripts
-notepad gerar_qrcodes.py
+### Opção 1: Via API (Recomendado)
+
+#### 1. Fazer login como admin
+```http
+POST /api/auth/login
+username: dev_admin
+password: ProjetoBag+2026
 ```
 
-Modificar última linha:
-```python
-gerar_lote(quantidade=5000)  # Alterar quantidade desejada
+#### 2. Gerar lote via Swagger
+```http
+POST /api/admin/qrcodes/gerar
+Authorization: Bearer {token}
+
+{
+  "quantidade": 100,
+  "formatos": ["csv", "pdf"]
+}
 ```
 
-### 2. Executar Script
+**Response:**
+```json
+{
+  "sucesso": true,
+  "mensagem": "Lote de 100 QR Codes gerado com sucesso",
+  "intervalo": "BAG-00001 até BAG-00100",
+  "data_criacao": "2026-04-15",
+  "links_download": {
+    "csv": "/api/admin/qrcodes/download/csv/lote_00001-00100.csv",
+    "pdf": "/api/admin/qrcodes/download/pdf/lote_00001-00100_IMPRESSAO.pdf"
+  }
+}
+```
+
+#### 3. Download dos arquivos
+```http
+GET /api/admin/qrcodes/download/csv/lote_00001-00100.csv
+GET /api/admin/qrcodes/download/pdf/lote_00001-00100_IMPRESSAO.pdf
+```
+
+#### 4. Importar no Sistema
+```http
+POST /api/admin/lotes/importar
+Authorization: Bearer {token}
+
+data_fabricacao: 2026-03-31
+inicio: 1
+fim: 100
+```
+
+---
+
+### Opção 2: Via Script CLI
+
+#### 1. Executar script
 ```bash
 cd scripts/qrcodes
 python gerar_qrcodes.py
 ```
 
-**Confirmar com 'S'**
+#### 2. Seguir prompts interativos
+```
+ Quantos QR Codes gerar? (1-10000): 100
+ Data de criação [2026-04-15]: 
+ Formatos: 1-CSV, 2-PDF, 3-Ambos [3]: 3
+ Confirmar geração? (S/N): S
+```
 
-### 3. Arquivos Gerados
+#### 3. Arquivos gerados
 ```
 storage/qrcodes/
-├── csv/
-│   └── lote_00001-05000.csv
-├── pdf/
-│   └── lote_00001-05000_IMPRESSAO.pdf
-└── ultimo_id.txt
+├── csv/lote_00001-00100.csv
+├── pdf/lote_00001-00100_IMPRESSAO.pdf
+└── ultimo_id.txt (atualizado para 100)
 ```
 
-### 4. Importar no Sistema
+#### 4. Importar via API
 ```http
 POST /api/admin/lotes/importar
-Authorization: Bearer {seu_token_jwt}
 data_fabricacao: 2026-03-31
 inicio: 1
-fim: 5000
+fim: 100
 ```
 
-> **Otimização:** Não gera PNGs individuais (economia de 50MB e 5.000 arquivos)
+> **Sincronização:** API e CLI compartilham o mesmo `ultimo_id.txt`, garantindo sequência única!
 
 ---
 
@@ -677,8 +782,9 @@ python run.py
 
 ```http
 POST /api/auth/login
-username: DEV_ADMIN_USERNAME
-password: DEV_ADMIN_PASSWORD
+username: caixa_teste
+password: senha123
+terminal: caixa 2
 ```
 
 #### 1. Autorizar no Swagger
@@ -689,18 +795,19 @@ password: DEV_ADMIN_PASSWORD
 4. Clicar em "Authorize"
 ```
 
-#### 2. Gerar QR Codes
-```bash
-cd scripts/qrcodes
-python gerar_qrcodes.py
-# Confirmar com S
-# Resultado: CSV + PDF gerados
+#### 2. Gerar QR Codes (Admin)
+```http
+POST /api/admin/qrcodes/gerar
+{
+  "quantidade": 5,
+  "formatos": ["csv", "pdf"]
+}
 ```
 
 #### 3. Importar Lote
 ```http
 POST /api/admin/lotes/importar
-data_fabricacao: 2026-03-31
+data_fabricacao: 2026-04-15
 inicio: 1
 fim: 5
 ```
@@ -715,30 +822,32 @@ nome: João Silva
 #### 5. Ativar Sacola
 ```http
 POST /api/sacolas/ativar
-qr_code: BAG-00001:2026-03-31:757314  # Copiar do CSV
+qr_code: BAG-00001:2026-04-15:757314  # Do CSV
 cpf_cliente: 12345678900
 ```
 
-#### 6. Registrar Uso
+#### 6. Registrar Uso (Caixa)
 ```http
 POST /api/sacolas/registrar-uso
+Authorization: Bearer {token_caixa_com_terminal}
+
 sacola_id: BAG-00001
 valor_compra: 125,50
 ```
 
-#### 7. Ver Dashboard
+#### 7. Ver Relatório por Terminal
+```http
+GET /api/admin/relatorios/vendas-por-terminal?data=2026-04-15
+```
+
+#### 8. Ver Dashboard
 ```http
 GET /api/admin/relatorios/dashboard
 ```
 
-#### 8. Exportar Dados
-```http
-GET /api/admin/exportar/usos
-```
-
 #### 9. Consultar Logs de Auditoria
 ```http
-GET /api/admin/auditoria/logs
+GET /api/admin/auditoria/logs?usuario_username=caixa_teste
 ```
 
 ---
@@ -787,6 +896,7 @@ DEV_ADMIN_PASSWORD=ProjetoBag+2026
    - Intervalo mínimo 4 horas entre usos
    - Detecção automática de padrões suspeitos
    - Sistema de alertas com gravidade
+   - Autenticação obrigatória para registrar uso
 
 3. **Controle de Acesso**
    - Sistema de suspensão de clientes
@@ -794,16 +904,17 @@ DEV_ADMIN_PASSWORD=ProjetoBag+2026
    - Registro de motivos e datas
 
 4. **Autenticação e Autorização**
-   - JWT com expiração de 24h
+   - JWT com expiração diferenciada (12h caixa, 24h admin/gerente)
    - Hash de senhas com bcrypt (custo 12)
    - Controle granular por roles (admin/gerente/caixa)
-   - 31 endpoints protegidos
+   - 35 endpoints protegidos
    - Middleware de autenticação automática
+   - Sistema de terminais para rastreabilidade
 
 5. **Auditoria Completa**
    - Histórico completo de eventos
    - Logs de todas ações administrativas
-   - Rastreamento de quem fez o quê e quando
+   - Rastreamento: quem, quando, onde (terminal), de onde (IP)
    - Exportação de dados para análise
    - Rastreamento de transferências e resets
    - Detalhes completos em JSON
@@ -828,15 +939,16 @@ pip install -r services/backend/requirements.txt
 
 #### Erro: "QR Code inválido"
 - Verificar se SECRET_KEY é a mesma no script e no backend
-- Verificar formato: `BAG-00001:2026-03-31:checksum`
+- Verificar formato: `BAG-00001:2026-04-15:checksum`
 
 #### Erro: "Valor mínimo R$ 15,00"
 - Sistema não aceita valores abaixo de R$ 15,00 (proteção anti-fraude)
 
 #### Erro: "Not authenticated" ou "Insufficient permissions"
 - Verificar se token JWT está sendo enviado no header Authorization
-- Verificar se token não expirou (24h de validade)
+- Verificar se token não expirou (12h caixa, 24h admin/gerente)
 - Verificar se usuário tem a role necessária para o endpoint
+- Caixas precisam incluir terminal no login
 
 #### Erro: "Port already in use"
 ```bash
@@ -870,8 +982,8 @@ Este é um projeto comercial proprietário. O código está disponível para ava
 
 ---
 
-**Versão:** v0.91-beta  
-**Endpoints:** 53 funcionais  
-**Atualizado:** 14/04/2026  
+**Versão:** v0.92-beta  
+**Endpoints:** 57 funcionais  
+**Atualizado:** 15/04/2026  
 **Arquitetura:** Modular Monorepo + Docker  
 **Status:** 🟢 Produção Online (AWS São Paulo)
