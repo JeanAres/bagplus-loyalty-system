@@ -16,7 +16,7 @@ from app.routers import clientes, sacolas, auth, notificacoes
 from app.routers.admin import (
     lotes, suspensao, alertas, relatorios,
     sacolas as admin_sacolas, exportar, usuarios,
-    auditoria, notificacoes as admin_notificacoes
+    auditoria, qrcodes, notificacoes as admin_notificacoes
 )
 
 # Configuração Swagger
@@ -77,6 +77,7 @@ app.include_router(exportar.router)
 app.include_router(usuarios.router)
 app.include_router(auditoria.router)
 app.include_router(admin_notificacoes.router)
+app.include_router(qrcodes.router)
 
 @app.get(
     "/",

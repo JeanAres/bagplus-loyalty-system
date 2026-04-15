@@ -3,7 +3,7 @@ Metadados e configuração da documentação da API
 """
 
 TITLE = "Bag+ API"
-VERSION = "0.90-beta"
+VERSION = "0.92-beta"
 
 DESCRIPTION = """
 **Solução integrada para gestão de sacolas reutilizáveis e fidelização sustentável.**
@@ -17,7 +17,7 @@ A API Bag+ fornece um ecossistema completo para operações de balcão e gestão
 *   **Comunicação:** Sistema de notificações push e broadcast para engajamento.
 
 ---
-**Suporte Técnico:** [jean06soares@gmail.com](mailto:jean06soares@gmail.com) | **Total:** 53 endpoints operacionais.
+**Suporte Técnico:** [jean06soares@gmail.com](mailto:jean06soares@gmail.com) | **Total:** 57 endpoints operacionais.
 """
 
 CONTACT = {
@@ -86,6 +86,10 @@ TAGS_METADATA = [
     {
         "name": "Admin - Notificações",
         "description": "**Gestão de Notificações** - Broadcast, limpeza de antigas, estatísticas | *Requer: Admin ou Gerente*"
+    },
+    {
+        "name": "Admin - QR Codes",
+        "description": "**Geração de QR Codes** - Lotes sequenciais, download CSV/PDF, histórico de geração | *Requer: Admin*"
     }
 ]
 
