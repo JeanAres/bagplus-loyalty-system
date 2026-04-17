@@ -3,12 +3,14 @@ Metadados e configuração da documentação da API
 """
 
 TITLE = "Bag+ API"
-VERSION = "0.92-beta"
+VERSION = "0.93-beta"
 
 DESCRIPTION = """
 **Solução integrada para gestão de sacolas reutilizáveis e fidelização sustentável.**
 
 A API Bag+ fornece um ecossistema completo para operações de balcão e gestão administrativa de alto nível.
+
+**IMPORTANTE:** Todos os endpoints requerem autenticação JWT. Sistema protegido por roles: Admin, Gerente e Caixa.
 
 ### Pilares do Sistema
 *   **Operacional:** Ciclo completo da sacola (Ativação via QR Code, Uso e Devolução) e gestão de clientes.

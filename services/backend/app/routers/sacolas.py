@@ -2,7 +2,7 @@
 Endpoints relacionados a sacolas
 """
 from fastapi import APIRouter, Depends, HTTPException, Request
-from app.middleware.auth import get_current_user
+from app.middleware.auth import get_current_user, require_role
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from datetime import datetime, timedelta
@@ -29,6 +29,7 @@ router = APIRouter(
 @router.get(
     "/{sacola_id}",
     summary="Buscar informações da sacola",
+    dependencies=[Depends(require_role(["caixa", "gerente", "admin"]))]
 )
 def buscar_sacola(sacola_id: str, db: Session = Depends(get_db)):
     """
@@ -112,6 +113,7 @@ def buscar_sacola(sacola_id: str, db: Session = Depends(get_db)):
 @router.post(
     "/ativar",
     summary="Ativar sacola (individual)",
+    dependencies=[Depends(require_role(["caixa", "gerente", "admin"]))]
 )
 def ativar_sacola(qr_code: str, cpf_cliente: str, db: Session = Depends(get_db)):
     """
@@ -216,6 +218,7 @@ def ativar_sacola(qr_code: str, cpf_cliente: str, db: Session = Depends(get_db))
 @router.post(
     "/ativar-lote",
     summary="Ativar múltiplas sacolas (lote)",
+    dependencies=[Depends(require_role(["caixa", "gerente", "admin"]))]
 )
 def ativar_sacolas_lote(
     qr_codes: list[str],
@@ -571,6 +574,7 @@ def registrar_uso(
 @router.post(
     "/devolver",
     summary="Devolver sacola",
+    dependencies=[Depends(require_role(["caixa", "gerente", "admin"]))]
 )
 def devolver_sacola(sacola_id: str, db: Session = Depends(get_db)):
     """
@@ -644,6 +648,7 @@ def devolver_sacola(sacola_id: str, db: Session = Depends(get_db)):
 @router.get(
     "/{sacola_id}/historico",
     summary="Histórico de uso da sacola",
+    dependencies=[Depends(require_role(["caixa", "gerente", "admin"]))]
 )
 def historico_uso(sacola_id: str, db: Session = Depends(get_db)):
     """
@@ -695,6 +700,7 @@ def historico_uso(sacola_id: str, db: Session = Depends(get_db)):
 @router.post(
     "/verificar-qr",
     summary="Verificar QR Code sem ativar",
+    dependencies=[Depends(require_role(["caixa", "gerente", "admin"]))]
 )
 def verificar_qr_code(qr_code: str, db: Session = Depends(get_db)):
     """
@@ -748,6 +754,7 @@ def verificar_qr_code(qr_code: str, db: Session = Depends(get_db)):
 @router.get(
     "/ativas",
     summary="Listar sacolas ativas",
+    dependencies=[Depends(require_role(["caixa", "gerente", "admin"]))]
 )
 def listar_sacolas_ativas(db: Session = Depends(get_db)):
     """
