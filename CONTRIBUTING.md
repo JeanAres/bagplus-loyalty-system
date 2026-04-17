@@ -336,6 +336,7 @@ Este projeto segue o padrão **Conventional Commits**.
 - `auth` - Autenticação/autorização
 - `database` - Banco de dados e models
 - `core` - Lógica de negócio central
+- `qrcodes` - Sistema de QR Codes
 
 ### Frontends
 - `caixa` - Interface do operador de caixa
@@ -366,6 +367,7 @@ git commit -m "feat(backend): implementa sistema de notificações"
 git commit -m "fix(api): corrige endpoint de exportação CSV"
 git commit -m "refactor(auth): simplifica middleware JWT"
 git commit -m "feat(backend): adiciona validação de CPF"
+git commit -m "feat(qrcodes): implementa API de geração de QR Codes"
 
 # Frontend
 git commit -m "feat(caixa): adiciona tela de cadastro de cliente"
@@ -433,13 +435,18 @@ services/backend/
 ├── app/
 │   ├── routers/        # Novos endpoints aqui
 │   │   ├── admin/      # Endpoints administrativos
+│   │   │   ├── qrcodes.py      # Geração de QR Codes
+│   │   │   ├── relatorios.py   # Relatórios
+│   │   │   ├── usuarios.py     # Gestão de usuários
+│   │   │   └── ...
 │   │   ├── clientes.py
 │   │   ├── sacolas.py
 │   │   └── auth.py
 │   ├── core/           # Lógica de negócio
 │   │   ├── security.py
 │   │   ├── audit.py
-│   │   └── helpers.py
+│   │   ├── helpers.py
+│   │   └── qrcode_generator.py  # Módulo QR Codes reutilizável
 │   ├── db/             # Models e sessão
 │   │   ├── models.py
 │   │   └── session.py
@@ -514,12 +521,19 @@ docker-compose logs -f backend
 
 ### QR Codes
 ```bash
-# Gerar QR Codes
+# Gerar via API (recomendado para produção)
+# Usar Swagger: POST /api/admin/qrcodes/gerar
+# Requer autenticação como admin
+
+# Gerar via script CLI (desenvolvimento)
 cd scripts/qrcodes
 python gerar_qrcodes.py
 
 # Limpar QR Codes antigos
 python limpar_qrcodes.py
+
+# Verificar último ID gerado
+# Arquivo: storage/qrcodes/ultimo_id.txt
 ```
 
 ### Docker
@@ -613,33 +627,6 @@ grep -r "texto" services/backend/
 
 ---
 
-## Segurança
-
-### NUNCA Commitar:
-
-```bash
- .env (variáveis de ambiente)
- *.pem (chaves SSH)
- *.key (chaves privadas)
- *.db (bancos de dados com dados reais)
- Credenciais de acesso
- IPs de servidores
- Senhas
-```
-
-### SEMPRE Commitar:
-
-```bash
- .env.example (template sem valores reais)
- README.md
- CONTRIBUTING.md
- requirements.txt
- Dockerfile
- docker-compose.yml (com variáveis genéricas)
- Código-fonte
- Documentação
-```
-
 ### Verificar antes de Push:
 
 ```bash
@@ -655,5 +642,5 @@ git reset HEAD <arquivo>
 
 ---
 
-**Última atualização:** 11/04/2026  
-**Versão:** 3.0 (Atualizado com Deploy e Ambientes)
+**Última atualização:** 15/04/2026  
+**Versão:** 3.1 (Adicionada estrutura QR Codes e comandos API)
