@@ -160,3 +160,8 @@ storage-staging/
 # Banco SQLite (não versionar)
 services/backend/bagplus.db
 services/backend/data/bagplus.db
+
+# Arquivos pessoais com credenciais
+DEPLOY_STAGING.md
+*_PERSONAL.md
+*_PRIVATE.md
