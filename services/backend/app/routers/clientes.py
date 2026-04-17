@@ -17,6 +17,7 @@ router = APIRouter(
 @router.post(
     "/",
     summary="Cadastrar novo cliente",
+    dependencies=[Depends(require_role(["caixa", "gerente", "admin"]))]
 )
 def criar_cliente(cpf: str, nome: str, db: Session = Depends(get_db)):
     """
@@ -68,6 +69,7 @@ def criar_cliente(cpf: str, nome: str, db: Session = Depends(get_db)):
 @router.get(
     "/",
     summary="Listar todos os clientes",
+    dependencies=[Depends(require_role(["caixa", "gerente", "admin"]))]
 )
 def listar_clientes(db: Session = Depends(get_db)):
     """
@@ -107,6 +109,7 @@ def listar_clientes(db: Session = Depends(get_db)):
 @router.get(
     "/buscar",
     summary="Buscar cliente por nome",
+    dependencies=[Depends(require_role(["caixa", "gerente", "admin"]))]
 )
 def buscar_cliente_por_nome(nome: str, db: Session = Depends(get_db)):
     """
@@ -181,6 +184,7 @@ def buscar_cliente_por_nome(nome: str, db: Session = Depends(get_db)):
 @router.get(
     "/{cpf}/sacolas",
     summary="Listar sacolas do cliente",
+    dependencies=[Depends(require_role(["caixa", "gerente", "admin"]))]
 )
 def listar_sacolas_cliente(cpf: str, db: Session = Depends(get_db)):
     """
@@ -232,6 +236,7 @@ def listar_sacolas_cliente(cpf: str, db: Session = Depends(get_db)):
 @router.get(
     "/{cpf}/estatisticas",
     summary="Estatísticas do cliente",
+    dependencies=[Depends(require_role(["caixa", "gerente", "admin"]))]
 )
 def estatisticas_cliente(cpf: str, db: Session = Depends(get_db)):
     """
@@ -286,6 +291,7 @@ def estatisticas_cliente(cpf: str, db: Session = Depends(get_db)):
 @router.get(
     "/{cpf}/historico-completo",
     summary="Histórico completo do cliente",
+    dependencies=[Depends(require_role(["caixa", "gerente", "admin"]))]
 )
 def historico_completo_cliente(cpf: str, db: Session = Depends(get_db)):
     """
@@ -477,6 +483,7 @@ def historico_completo_cliente(cpf: str, db: Session = Depends(get_db)):
 @router.get(
     "/{cpf}/validar",
     summary="Validar se cliente existe",
+    dependencies=[Depends(require_role(["caixa", "gerente", "admin"]))]
 )
 def validar_cliente(cpf: str, db: Session = Depends(get_db)):
     """
@@ -541,7 +548,11 @@ def validar_cliente(cpf: str, db: Session = Depends(get_db)):
         }
     }
    
-@router.post("/validar-cpf", summary="Validar CPF")
+@router.post(
+    "/validar-cpf", 
+    summary="Validar CPF",
+    dependencies=[Depends(require_role(["caixa", "gerente", "admin"]))]
+)
 def validar_cpf_endpoint(cpf: str):
     """
     Valida se um CPF é válido (formato e dígitos verificadores).
