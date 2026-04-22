@@ -4,7 +4,7 @@
 > para avaliação e portfólio, mas **uso comercial requer licença**. 
 > Entre em contato para implementação: jean06soares@gmail.com
 
-Sistema completo de gerenciamento de sacolas reutilizáveis com programa de recompensas, autenticação JWT com roles, sistema de terminais, QR Codes com segurança anti-falsificação, detecção automática de fraudes, sistema de suspensão de clientes, relatórios gerenciais avançados, logs de auditoria e exportação de dados.
+Sistema completo de gerenciamento de sacolas reutilizáveis com programa de recompensas, autenticação JWT com roles, sistema de terminais, QR Codes com segurança anti-falsificação, detecção automática de fraudes, sistema de suspensão de clientes, relatórios gerenciais avançados, logs de auditoria, exportação de dados e proteção contra ataques com rate limiting.
 
 > Para entender o conceito e proposta do negócio, veja [PROPOSTA.md](PROPOSTA.md)
 
@@ -74,6 +74,14 @@ Status: Quando rodando
 - **Logs de auditoria** - Rastreamento completo: quem, quando, onde (terminal), de onde (IP)
 - **Token de desenvolvimento** - Gerado automaticamente ao iniciar servidor
 - **Middleware de autenticação** - Validação automática em todos endpoints admin
+
+### Rate Limiting e Proteção contra Ataques
+- **Limite no login** - Máximo 5 tentativas por minuto (anti-bruteforce)
+- **Limite global** - 1000 requisições por hora por usuário
+- **Identificação inteligente** - Por user_id (autenticado) ou IP (não autenticado)
+- **Biblioteca slowapi** - Rate limiting eficiente em memória
+- **Proteção DDoS** - Previne sobrecarga do servidor
+- **Mensagens claras** - "Rate limit exceeded: 5 per 1 minute"
 
 ### Sistema de Terminais
 - **Identificação por caixa** - 5 terminais configurados (Caixa 1-5)
@@ -549,6 +557,7 @@ bagplus-loyalty-system/
 - **Python-dotenv** - Gerenciamento de variáveis de ambiente
 - **python-dateutil** - Cálculos de datas para analytics MoM
 - **validate-docbr** - Validação de CPF e CNPJ
+- **slowapi** - Rate limiting para proteção de API
 
 ### Autenticação e Segurança
 - **python-jose[cryptography]** - Tokens JWT
@@ -919,6 +928,12 @@ DEV_ADMIN_PASSWORD=ProjetoBag+2026
    - Rastreamento de transferências e resets
    - Detalhes completos em JSON
 
+6. **Rate Limiting**
+   - Login limitado a 5 tentativas por minuto
+   - Proteção contra ataques de força bruta
+   - Limite global de 1000 req/hora
+   - Identificação por usuário autenticado ou IP
+
 ---
 
 ## Suporte
@@ -982,7 +997,7 @@ Este é um projeto comercial proprietário. O código está disponível para ava
 
 ---
 
-**Versão:** v0.92-beta  
+**Versão:** v0.93-beta  
 **Endpoints:** 57 funcionais  
 **Atualizado:** 15/04/2026  
 **Arquitetura:** Modular Monorepo + Docker  
