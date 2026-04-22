@@ -10,6 +10,7 @@ from fastapi import Request
 from app.core.audit import registrar_log
 from app.core.security import verify_password, create_access_token
 from app.middleware.auth import get_current_user
+from app.core.rate_limiter import limiter
 
 router = APIRouter(
     prefix="/api/auth",
@@ -21,6 +22,7 @@ router = APIRouter(
     "/login",
     summary="Login no sistema",
 )
+@limiter.limit("5/minute")
 def login(
     username: str,
     password: str,

@@ -11,6 +11,11 @@ from fastapi.staticfiles import StaticFiles
 from app.db.session import engine, SessionLocal
 from app.db import models
 
+# Configurações para o rate limit
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from app.core.rate_limiter import limiter
+
 # Routers
 from app.routers import clientes, sacolas, auth, notificacoes
 from app.routers.admin import (
@@ -43,6 +48,10 @@ app = FastAPI(
     swagger_ui_parameters=SWAGGER_UI_PARAMETERS,
     docs_url=None  # Desabilita docs padrão para usar customizado
 )
+
+# Rate Limiting
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Montar arquivos estáticos (CSS do Swagger)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
