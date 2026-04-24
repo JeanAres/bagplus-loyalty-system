@@ -1,6 +1,7 @@
 """
 Endpoints relacionados a clientes
 """
+from app.core.validators import sanitize_string, validar_cpf_formato, validar_nome
 from fastapi import APIRouter, Depends, HTTPException
 from app.middleware.auth import require_role
 from sqlalchemy.orm import Session
@@ -35,22 +36,19 @@ def criar_cliente(cpf: str, nome: str, db: Session = Depends(get_db)):
     **Observação:** Aceita CPF com ou sem formatação (123.456.789-00 ou 12345678900)
     """
     
-    # Validar CPF (apenas números)
-    cpf_numeros = cpf.replace('.', '').replace('-', '')
-    if len(cpf_numeros) != 11 or not cpf_numeros.isdigit():
-        raise HTTPException(status_code=400, detail="CPF inválido. Deve conter 11 dígitos")
+    # Validar e sanitizar CPF
+    cpf_validado = validar_cpf_formato(cpf)
     
-    # Validar nome
-    if len(nome.strip()) < 3:
-        raise HTTPException(status_code=400, detail="Nome deve ter pelo menos 3 caracteres")
+    # Validar e sanitizar nome
+    nome_validado = validar_nome(nome)
     
     # Verificar se cliente já existe
-    cliente_existente = db.query(models.Cliente).filter(models.Cliente.cpf == cpf).first()
+    cliente_existente = db.query(models.Cliente).filter(models.Cliente.cpf == cpf_validado).first()
     if cliente_existente:
         raise HTTPException(status_code=400, detail="Cliente já cadastrado")
     
     # Criar cliente
-    cliente = models.Cliente(cpf=cpf, nome=nome.strip())
+    cliente = models.Cliente(cpf=cpf_validado, nome=nome_validado)
     db.add(cliente)
     db.commit()
     db.refresh(cliente)

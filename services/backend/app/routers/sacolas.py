@@ -3,6 +3,7 @@ Endpoints relacionados a sacolas
 """
 from fastapi import APIRouter, Depends, HTTPException, Request
 from app.middleware.auth import get_current_user, require_role
+from app.core.validators import validar_valor_monetario
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from datetime import datetime, timedelta
@@ -445,18 +446,8 @@ def registrar_uso(
                 detail=f"Intervalo mínimo não atingido. Aguarde {horas_restantes:.1f} horas"
             )
     
-    # Converter e validar valor
-    try:
-        valor_str = valor_compra.replace(',', '.')
-        valor_float = float(valor_str)
-    except (ValueError, AttributeError):
-        raise HTTPException(
-            status_code=400,
-            detail="Valor da compra inválido. Use formato: 120.50 ou 120,50"
-        )
-    
-    if valor_float < 0:
-        raise HTTPException(status_code=400, detail="Valor da compra não pode ser negativo")
+    # Validar valor monetário
+    valor_float = validar_valor_monetario(valor_compra)
     
     # Validar valor mínimo
     if valor_float < 15.00:
