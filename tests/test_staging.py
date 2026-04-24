@@ -263,7 +263,7 @@ def main():
     print("\nPróximos passos:")
     print("1. Abrir Swagger: http://localhost:8001/docs")
     print("2. Clicar em 'Authorize' e usar o token obtido")
-    print("3. Testar manualmente os 57 endpoints")
+    print("3. Testar manualmente os 58 endpoints")
     print("4. Validar sistema de terminais")
     print("5. Testar API de QR Codes completa")
 

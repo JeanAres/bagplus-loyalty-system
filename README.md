@@ -581,7 +581,7 @@ bagplus-loyalty-system/
 
 ---
 
-## API Endpoints (57 total)
+## API Endpoints (58 de API / 61 rotas HTTP totais)
 
 > **Documentação completa e interativa:**
 > - Produção: `https://api.bagplus.com.br/docs`
@@ -589,20 +589,21 @@ bagplus-loyalty-system/
 > - Local: `http://localhost:8000/docs`
 
 ### Clientes (9 endpoints - Públicos)
-### Sacolas (7 endpoints - Públicos)
+### Sacolas (8 endpoints - Públicos)
+### Notificações (4 endpoints - Públicos)
 ### Autenticação (3 endpoints - Públicos)
 ### Admin - Lotes (3 endpoints - Admin + Gerente)
-### Admin - Clientes (3 endpoints - Variado)
+### Admin - Suspensão (3 endpoints - Admin + Gerente)
 ### Admin - Alertas (2 endpoints - Admin + Gerente)
 ### Admin - Relatórios (5 endpoints - Admin + Gerente)
-### Admin - Sacolas (6 endpoints - Variado)
+### Admin - Sacolas (5 endpoints - Variado)
 ### Admin - Exportação (3 endpoints - Admin + Gerente)
 ### Admin - Usuários (5 endpoints - Variado)
 ### Admin - Auditoria (1 endpoint - Admin + Gerente)
 ### Admin - Notificações (3 endpoints - Admin + Gerente)
 ### Admin - QR Codes (4 endpoints - Admin/Gerente)
 
-*(Detalhamento completo dos 57 endpoints disponível em `/docs` de cada ambiente)*
+*(Detalhamento completo dos 58 endpoints de API disponível em `/docs` de cada ambiente)*
 
 ---
 
@@ -998,7 +999,7 @@ Este é um projeto comercial proprietário. O código está disponível para ava
 ---
 
 **Versão:** v0.93-beta  
-**Endpoints:** 57 funcionais  
+**Endpoints:** 58 de API (61 rotas HTTP totais)  
 **Atualizado:** 15/04/2026  
 **Arquitetura:** Modular Monorepo + Docker  
 **Status:** 🟢 Produção Online (AWS São Paulo)

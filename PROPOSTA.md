@@ -8,7 +8,7 @@ Sistema de fidelização sustentável com EcoBags de juta rastreáveis, incentiv
 
 ## Status do Projeto
 
-**Backend:** 95% completo (57 endpoints operacionais)  
+**Backend:** 95% completo (58 endpoints operacionais)  
 **Arquitetura:** Enterprise Monorepo  
 **Versão:** v0.92-beta  
 **Última atualização:** Abril 2026  
@@ -195,25 +195,25 @@ bagplus-loyalty-system/
 ```
 
 ### Endpoints Disponíveis
-**Total:** 57 endpoints operacionais
+**Total:** 58 endpoints de API operacionais (`/api`) + 3 rotas auxiliares (`/`, `/docs`, `/redoc`) = **61 rotas HTTP**
 
-**Públicos (15):**
+**Públicos (24):**
 - 9 endpoints de clientes
-- 7 endpoints de sacolas
-- 3 endpoints de notificações
+- 8 endpoints de sacolas
+- 4 endpoints de notificações
 - 3 endpoints de autenticação
 
-**Admin (42):**
+**Admin (34):**
 - 5 endpoints de relatórios
 - 5 endpoints de gestão de usuários
 - 2 endpoints de alertas
 - 3 endpoints de lotes
+- 3 endpoints de suspensão
 - 4 endpoints de QR Codes
-- 6 endpoints de operações especiais
+- 5 endpoints de gestão de sacolas
 - 3 endpoints de exportação
 - 3 endpoints de notificações
 - 1 endpoint de auditoria
-- 10+ endpoints administrativos diversos
 
 ## Público-Alvo
 
@@ -312,7 +312,7 @@ bagplus-loyalty-system/
 Este software está disponível para licenciamento comercial.
 
 ### O que está incluído:
-- Backend completo (57 endpoints)
+- Backend completo (58 endpoints de API)
 - Sistema de autenticação e segurança
 - Sistema de terminais
 - Dashboard administrativo
@@ -347,7 +347,7 @@ Este software está disponível para licenciamento comercial.
 
 **Acesso ao Sistema:**
 - Swagger UI com tema dark profissional
-- 57 endpoints documentados
+- 58 endpoints documentados
 - Exemplos de requisições
 - Teste de autenticação e permissões
 - Geração de QR Codes via interface
