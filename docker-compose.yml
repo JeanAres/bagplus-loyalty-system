@@ -11,7 +11,7 @@ services:
       - DATABASE_URL=sqlite:///./data/bagplus.db
       - SECRET_KEY=${SECRET_KEY}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY}
-      - ENVIRONMENT=development
+      - ENVIRONMENT=local
     volumes:
       - ./storage:/app/storage
       - ./services/backend/data:/app/data

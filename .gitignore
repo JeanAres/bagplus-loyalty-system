@@ -162,9 +162,13 @@ services/backend/bagplus.db
 services/backend/data/bagplus.db
 
 # Arquivos pessoais com credenciais
+DEPLOY_CHECKLIST.md
 DEPLOY_STAGING.md
 *_PERSONAL.md
 *_PRIVATE.md
 
 # Scripts de teste locais
 tests/test_endpoints_security.py
+
+# Logs de segurança
+services/backend/logs/

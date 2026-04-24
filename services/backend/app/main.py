@@ -3,7 +3,7 @@ Bag+ API - Sistema de Fidelização Sustentável
 Arquivo principal - Inicialização da aplicação
 """
 import os
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.routing import APIRoute
@@ -51,8 +51,23 @@ app = FastAPI(
 )
 
 # Rate Limiting
+from app.core.event_logger import security_logger
+
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Handler customizado para rate limit com logging
+def custom_rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    """Handler que registra rate limit excedido antes de retornar erro."""
+    # Registrar no log de segurança
+    security_logger.rate_limit_exceeded(
+        endpoint=request.url.path,
+        ip=request.client.host if request.client else "unknown",
+        limit=str(exc.detail) if hasattr(exc, 'detail') else "unknown"
+    )
+    # Chamar handler padrão
+    return _rate_limit_exceeded_handler(request, exc)
+
+app.add_exception_handler(RateLimitExceeded, custom_rate_limit_handler)
 
 # Montar arquivos estáticos (CSS do Swagger)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

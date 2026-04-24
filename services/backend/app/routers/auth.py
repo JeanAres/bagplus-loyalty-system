@@ -11,6 +11,7 @@ from app.core.audit import registrar_log
 from app.core.security import verify_password, create_access_token
 from app.middleware.auth import get_current_user
 from app.core.rate_limiter import limiter
+from app.core.event_logger import security_logger
 
 router = APIRouter(
     prefix="/api/auth",
@@ -56,12 +57,22 @@ def login(
     - Token válido por 12 horas para caixa (turno de trabalho)
     """
     
+    # Obter IP do cliente
+    client_ip = request.client.host if request and request.client else "unknown"
+    
     # Buscar usuário
     user = db.query(models.Usuario).filter(
         models.Usuario.username == username
     ).first()
     
     if not user:
+        # Log: usuário não encontrado
+        security_logger.login_attempt(
+            username=username,
+            success=False,
+            ip=client_ip,
+            reason="usuario_nao_encontrado"
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Usuário ou senha incorretos",
@@ -70,6 +81,13 @@ def login(
     
     # Verificar senha
     if not verify_password(password, user.password_hash):
+        # Log: senha incorreta
+        security_logger.login_attempt(
+            username=username,
+            success=False,
+            ip=client_ip,
+            reason="senha_incorreta"
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Usuário ou senha incorretos",
@@ -78,6 +96,13 @@ def login(
     
     # Verificar se está ativo
     if not user.ativo:
+        # Log: usuário inativo
+        security_logger.login_attempt(
+            username=username,
+            success=False,
+            ip=client_ip,
+            reason="usuario_inativo"
+        )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Usuário inativo. Contate o administrador."
@@ -104,6 +129,7 @@ def login(
         },
         expires_hours=expires_hours
     )
+    
     # Registrar login no log de auditoria
     registrar_log(
         db=db,
@@ -116,7 +142,14 @@ def login(
             "role": user.role,
             "expires_hours": expires_hours
         },
-        ip_address=request.client.host if request else None
+        ip_address=client_ip
+    )
+    
+    # Log: login bem-sucedido
+    security_logger.login_attempt(
+        username=username,
+        success=True,
+        ip=client_ip
     )
 
     return {

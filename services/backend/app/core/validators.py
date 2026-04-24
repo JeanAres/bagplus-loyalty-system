@@ -5,6 +5,7 @@ import bleach
 import re
 from typing import Optional
 from fastapi import HTTPException
+from app.core.event_logger import security_logger
 
 
 def sanitize_string(text: str, max_length: int = 500) -> str:
@@ -153,3 +154,63 @@ def validar_nome(nome: str, min_length: int = 3, max_length: int = 100) -> str:
         )
     
     return nome_limpo
+
+
+# ========================================
+# VALIDADORES COM LOG DE SEGURANÇA
+# ========================================
+# Versões que registram falhas suspeitas no log de segurança
+
+
+def validar_cpf_formato_logged(cpf: str, request) -> str:
+    """
+    Valida CPF e registra falhas suspeitas no log.
+    
+    Args:
+        cpf: CPF a validar
+        request: Request do FastAPI (para obter IP)
+    
+    Returns:
+        CPF validado
+    """
+    try:
+        return validar_cpf_formato(cpf)
+    except HTTPException as e:
+        # Registrar tentativa suspeita se CPF muito inválido
+        if len(cpf) > 20 or any(char in cpf for char in '<>"\';'):
+            security_logger.validation_failed(
+                field="cpf",
+                value=cpf,
+                reason=e.detail,
+                ip=request.client.host if request.client else "unknown",
+                endpoint=request.url.path
+            )
+        raise
+
+
+def validar_nome_logged(nome: str, request, min_length: int = 3, max_length: int = 100) -> str:
+    """
+    Valida nome e registra tentativas de XSS/injection.
+    
+    Args:
+        nome: Nome a validar
+        request: Request do FastAPI
+        min_length: Comprimento mínimo
+        max_length: Comprimento máximo
+    
+    Returns:
+        Nome validado
+    """
+    try:
+        return validar_nome(nome, min_length, max_length)
+    except HTTPException as e:
+        # Registrar se contém HTML/scripts
+        if any(tag in nome.lower() for tag in ['<script', '<iframe', 'javascript:', 'onerror=']):
+            security_logger.validation_failed(
+                field="nome",
+                value=nome,
+                reason="tentativa_xss",
+                ip=request.client.host if request.client else "unknown",
+                endpoint=request.url.path
+            )
+        raise
