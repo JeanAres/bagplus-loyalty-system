@@ -61,13 +61,32 @@ app.mount("/swagger-styles", StaticFiles(directory=static_path), name="swagger-s
 # Configurar Swagger UI customizado
 configure_swagger_ui(app)
 
-# Configurar CORS
+# Configuração CORS
+origins = [
+    # Desenvolvimento local
+    "http://localhost:3000",      # Admin React (dev)
+    "http://localhost:8000",      # Backend local
+    "http://localhost:5173",      # Vite dev server
+    "http://localhost:5500",      # Live Server (caixa HTML)
+    
+    # Produção
+    "https://api.bagplus.com.br",
+    "https://caixa.bagplus.com.br",
+    "https://admin.bagplus.com.br",
+    
+    # Staging (backend + frontends)
+    "https://staging.bagplus.com.br",           # Backend staging
+    "https://caixa-staging.bagplus.com.br",     # Frontend caixa staging
+    "https://admin-staging.bagplus.com.br",     # Frontend admin staging
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
     allow_headers=["*"],
+    expose_headers=["Content-Disposition"],
 )
 
 # Incluir routers públicos
@@ -100,7 +119,7 @@ def read_root():
         "api": "Bag+ - Sistema de Fidelização Sustentável",
         "version": VERSION,
         "status": "online",
-        "endpoints": 52,
+        "endpoints": 57,
         "docs": "/docs",
         "redoc": "/redoc",
         "message": "Sua sacola vale mais."
