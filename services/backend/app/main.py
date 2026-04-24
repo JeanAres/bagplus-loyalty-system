@@ -6,15 +6,19 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.routing import APIRoute
 
 # Database
-from app.db.session import engine, SessionLocal
+from app.db.session import engine
 from app.db import models
 
 # Configurações para o rate limit
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from app.core.rate_limiter import limiter
+
+# Middleware de segurança
+from app.middleware.security_headers import SecurityHeadersMiddleware
 
 # Routers
 from app.routers import clientes, sacolas, auth, notificacoes
@@ -30,9 +34,6 @@ from docs.swagger.config.metadata import (
     LICENSE_INFO, TAGS_METADATA, SWAGGER_UI_PARAMETERS
 )
 from docs.swagger.config.setup import configure_swagger_ui
-
-# Utilitários de desenvolvimento
-from scripts.dev_setup import criar_admin_padrao, exibir_token_dev
 
 # Criar tabelas
 models.Base.metadata.create_all(bind=engine)
@@ -89,6 +90,9 @@ app.add_middleware(
     expose_headers=["Content-Disposition"],
 )
 
+# Security Headers
+app.add_middleware(SecurityHeadersMiddleware)
+
 # Incluir routers públicos
 app.include_router(clientes.router)
 app.include_router(sacolas.router)
@@ -107,6 +111,16 @@ app.include_router(auditoria.router)
 app.include_router(admin_notificacoes.router)
 app.include_router(qrcodes.router)
 
+
+def count_api_endpoints() -> int:
+    """Conta dinamicamente apenas os endpoints da API (prefixo /api)."""
+    return sum(
+        1
+        for route in app.routes
+        if isinstance(route, APIRoute) and route.path.startswith("/api")
+    )
+
+
 @app.get(
     "/",
     tags=["Sistema"],
@@ -119,7 +133,7 @@ def read_root():
         "api": "Bag+ - Sistema de Fidelização Sustentável",
         "version": VERSION,
         "status": "online",
-        "endpoints": 57,
+        "endpoints": count_api_endpoints(),
         "docs": "/docs",
         "redoc": "/redoc",
         "message": "Sua sacola vale mais."
