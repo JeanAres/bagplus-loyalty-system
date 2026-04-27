@@ -144,12 +144,20 @@ def count_api_endpoints() -> int:
 )
 def read_root():
     """Endpoint raiz com informações da API"""
-    return {
+    import os
+    environment = os.getenv("ENVIRONMENT", "local")
+    
+    response = {
         "api": "Bag+ - Sistema de Fidelização Sustentável",
         "version": VERSION,
         "status": "online",
         "endpoints": count_api_endpoints(),
-        "docs": "/docs",
-        "redoc": "/redoc",
         "message": "Sua sacola vale mais."
     }
+    
+    # Mostrar docs apenas em ambientes de desenvolvimento
+    if environment in ["local", "staging"]:
+        response["docs"] = "/docs"
+        response["redoc"] = "/redoc"
+    
+    return response

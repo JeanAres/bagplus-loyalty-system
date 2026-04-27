@@ -13,6 +13,7 @@ import os
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Dict, Any
+from logging.handlers import TimedRotatingFileHandler
 
 
 # Configurar diretório de logs
@@ -49,8 +50,14 @@ class SecurityLogger:
         
         # Evitar duplicação de handlers
         if not self.logger.handlers:
-            # Handler para arquivo
-            file_handler = logging.FileHandler(SECURITY_LOG_FILE, encoding='utf-8')
+            # Handler para arquivo com rotação diária
+            file_handler = TimedRotatingFileHandler(
+                filename=str(SECURITY_LOG_FILE),
+                when="midnight",      # Rotaciona à meia-noite
+                interval=1,           # Diariamente
+                backupCount=30,       # Mantém 30 dias
+                encoding='utf-8'
+            )
             file_handler.setLevel(logging.INFO)
             
             # Formato: apenas a mensagem (já será JSON)
