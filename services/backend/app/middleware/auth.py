@@ -19,46 +19,36 @@ def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ) -> models.Usuario:
-    """
-    Valida token JWT e retorna usuário atual com terminal do token
-    
-    **Retorna:**
-    - Usuario do banco com atributo adicional 'terminal' do payload JWT
-    
-    Raises:
-        HTTPException 401: Token inválido ou expirado
-        HTTPException 404: Usuário não encontrado
-        HTTPException 403: Usuário inativo
-    """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Token inválido ou expirado",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    
+
     try:
-        # Decodificar token
         token = credentials.credentials
         payload = decode_token(token)
         username: str = payload.get("sub")
-        
+
         if username is None:
             raise credentials_exception
-            
+
     except JWTError:
         raise credentials_exception
-    
-    # Buscar usuário
+
     user = db.query(models.Usuario).filter(models.Usuario.username == username).first()
-    
+
     if user is None:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
-    
+
     if not user.ativo:
         raise HTTPException(status_code=403, detail="Usuário inativo")
-    
+
+    # Anexa info do token ao objeto user
     user.terminal = payload.get("terminal")
-    
+    user.entidade_id_token = payload.get("entidade_id")
+    user.unidade_id_token = payload.get("unidade_id")
+
     return user
 
 

@@ -125,7 +125,9 @@ def login(
         data={
             "sub": user.username,
             "role": user.role,
-            "terminal": terminal
+            "terminal": terminal,
+            "entidade_id": user.entidade_id,
+            "unidade_id": user.unidade_id
         },
         expires_hours=expires_hours
     )
@@ -161,7 +163,9 @@ def login(
             "username": user.username,
             "nome": user.nome,
             "role": user.role,
-            "terminal": terminal
+            "terminal": terminal,
+            "entidade_id": user.entidade_id,
+            "unidade_id": user.unidade_id
         }
     }
 
