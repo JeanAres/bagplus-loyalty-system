@@ -9,7 +9,7 @@ são propriedade exclusiva de Jean Soares.
 
 Este projeto inclui todos os componentes da arquitetura monorepo:
 - Backend (API FastAPI em services/backend/)
-- Frontends (apps/caixa, apps/gestor, apps/admin, apps/cliente)
+- Frontends (apps/caixa, apps/admin-gestor, apps/mobile)
 - Infraestrutura (infra/)
 - Scripts e documentação
 
@@ -140,13 +140,15 @@ Empresas que licenciarem este software são responsáveis por:
 
 ## Versionamento da Licença
 
-**Versão:** 2.0  
+**Versão:** 2.1  
 **Última atualização:** Abril de 2026  
 **Mudanças nesta versão:**
 - Atualização para arquitetura monorepo
 - Clarificação sobre repositório público
 - Adição de seção sobre contribuições
 - Inclusão de nota sobre LGPD
+- Arquitetura SaaS multi-tenant
+- Atualização para 3 frontends (caixa, admin-gestor, mobile)
 
 ---
 
