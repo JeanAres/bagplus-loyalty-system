@@ -8,9 +8,9 @@ Sistema de fidelização sustentável com EcoBags de juta rastreáveis, incentiv
 
 ## Status do Projeto
 
-**Backend:** 95% completo (58 endpoints operacionais)  
-**Arquitetura:** Enterprise Monorepo  
-**Versão:** v0.92-beta  
+**Backend:** 98% completo (69 endpoints operacionais)  
+**Arquitetura:** SaaS Multi-Tenant Enterprise Monorepo  
+**Versão:** v0.94-beta  
 **Última atualização:** Abril 2026  
 
 ---
@@ -21,11 +21,15 @@ O **Bag+** é um programa que visa substituir gradualmente as sacolas plásticas
 
 O sistema incorpora um programa de fidelização que recompensa clientes pelo uso recorrente das sacolas, criando incentivos financeiros para práticas sustentáveis.
 
+A plataforma é construída como **SaaS multi-tenant**, permitindo que múltiplos estabelecimentos (entidades) e suas filiais (unidades) operem de forma independente na mesma infraestrutura, cada um com suas próprias metas de desconto e rastreamento separado de progresso por cliente.
+
 ## Características Principais
 
 - **Material Sustentável**: EcoBags produzidas em juta biodegradável
 - **Sistema de Rastreamento**: Cada sacola vinculada ao CPF do cliente via QR Code SHA256
 - **Programa de Recompensas**: Descontos progressivos baseados no número de utilizações
+- **SaaS Multi-Tenant**: Múltiplos estabelecimentos e filiais em uma única plataforma
+- **Metas por Entidade**: Cada estabelecimento define suas próprias metas de desconto
 - **Ciclo de Vida Controlado**: 40 utilizações ou 90 dias de prazo máximo
 - **Descarte Responsável**: Compostagem industrial das sacolas devolvidas
 - **Detecção de Fraudes**: Sistema inteligente identifica 3 tipos de fraudes automaticamente
@@ -49,12 +53,13 @@ O sistema incorpora um programa de fidelização que recompensa clientes pelo us
 - Cada sacola utilizada recebe +1 registro de uso
 - Sistema valida compra real (valor obrigatório)
 - Intervalo mínimo de 4h entre usos da mesma sacola
-- Log completo: quem, quando, onde (terminal), de onde (IP)
+- Log completo: quem, quando, onde (terminal), de onde (IP), qual entidade/unidade
 
 ### 3. Acúmulo de Benefícios
-- Ao atingir número "X" de utilizações (definido pelo estabelecimento)
+- Ao atingir número "X" de utilizações (definido por cada estabelecimento)
 - Descontos liberados automaticamente
 - Notificações enviadas ao cliente sobre marcos alcançados
+- Progresso rastreado separadamente por estabelecimento
 - Devolução antecipada = descontos maiores
 
 ### 4. Devolução
@@ -76,6 +81,7 @@ O sistema incorpora um programa de fidelização que recompensa clientes pelo us
 **Limites:**
 - Prazo máximo: **90 dias**
 - Utilizações máximas: **40 usos**
+- Estado calculado pelo critério mais restritivo entre usos e dias
 
 ## Regras e Controle
 
@@ -84,12 +90,13 @@ O sistema incorpora um programa de fidelização que recompensa clientes pelo us
 - ✅ Validação obrigatória de compra real no sistema
 - ✅ Autenticação obrigatória para registrar vendas
 - ✅ Detecção automática de 3 tipos de fraude:
-  - **Tipo 1:** Múltiplas sacolas usadas simultaneamente
-  - **Tipo 2:** Uso excessivo em curto período
-  - **Tipo 3:** Padrão de uso suspeito
+  - **Tipo 1:** Múltiplas sacolas usadas simultaneamente com valores diferentes
+  - **Tipo 2:** Abuso de valor mínimo (8+ sacolas com R$ 15,00 no mesmo dia)
+  - **Tipo 3:** Padrão de valor repetido em dias diferentes
 - ✅ Alertas automáticos para comportamentos anormais
 - ✅ Sistema de auditoria completo (logs de todas ações)
 - ✅ Rastreamento por terminal (qual caixa registrou)
+- ✅ Rate limiting (5 tentativas de login/min, 1000 req/hora global)
 
 ### Integridade
 - Uso pessoal e intransferível (vinculado ao CPF)
@@ -98,6 +105,7 @@ O sistema incorpora um programa de fidelização que recompensa clientes pelo us
 - Ultrapassar limites = perda do direito à devolução com desconto
 - Sistema de gestão de usuários com 3 níveis (Admin/Gerente/Caixa)
 - Tokens JWT com expiração diferenciada (12h caixa, 24h admin/gerente)
+- Isolamento de dados: Gerente/Caixa vê apenas dados da sua unidade
 
 ### Responsabilidade Ambiental
 - Descarte incorreto comprovado pode resultar em suspensão de benefícios
@@ -132,7 +140,7 @@ O sistema incorpora um programa de fidelização que recompensa clientes pelo us
 ### Para Administradores
 - ✅ Gestão completa de usuários (criar, editar, desativar)
 - ✅ Sistema de roles (Admin/Gerente/Caixa)
-- ✅ Logs de auditoria completos com terminal e IP
+- ✅ Logs de auditoria completos com terminal, IP, entidade e unidade
 - ✅ Transferência de sacolas entre clientes
 - ✅ Reset de contador de utilizações
 - ✅ Suspensão/reativação de clientes
@@ -140,15 +148,20 @@ O sistema incorpora um programa de fidelização que recompensa clientes pelo us
 - ✅ Relatórios de impacto ambiental
 - ✅ Geração de QR Codes via API
 - ✅ Controle de sequência automático
+- ✅ Gestão de entidades (estabelecimentos) — SaaS
+- ✅ Gestão de unidades (filiais) — SaaS
+- ✅ Visão consolidada de todas entidades e unidades
 
 ### Segurança
-- ✅ Autenticação JWT (12h caixa, 24h admin/gerente)
-- ✅ 35 endpoints protegidos por role
+- ✅ Autenticação JWT com entidade_id e unidade_id no token
+- ✅ 35+ endpoints protegidos por role
 - ✅ Middleware de autenticação
 - ✅ Auditoria de todas ações sensíveis
 - ✅ Sistema de terminais para rastreabilidade
 - ✅ Validação de CPF com dígito verificador
-- ⏳ Rate limiting (planejado)
+- ✅ Rate limiting (slowapi) — login e global
+- ✅ Headers de segurança (CSP, X-Frame-Options, etc.)
+- ✅ Logs de segurança com rotação diária
 
 ### Geração de QR Codes
 - ✅ API REST completa (4 endpoints)
@@ -166,10 +179,26 @@ O sistema incorpora um programa de fidelização que recompensa clientes pelo us
 ### Stack
 - **Backend:** FastAPI (Python 3.11+)
 - **Banco de Dados:** SQLite (migração para PostgreSQL planejada)
-- **Autenticação:** JWT + bcrypt
+- **Autenticação:** JWT multi-tenant + bcrypt
 - **API Docs:** Swagger UI com tema dark customizado
-- **Estrutura:** Monorepo enterprise-grade
+- **Estrutura:** SaaS Multi-Tenant Monorepo enterprise-grade
 - **QR Codes:** qrcode + ReportLab + SHA256
+- **Migrations:** Sistema próprio com SQL versionado
+
+### Modelo Multi-Tenant
+```
+Admin Global
+└── Entidade (ex: Zaffari)
+    ├── Unidade (ex: Iguatemi)
+    │   ├── Gerente
+    │   └── Caixas (Terminal 1, Terminal 2...)
+    └── Unidade (ex: Cavalhada)
+        ├── Gerente
+        └── Caixas
+└── Entidade (ex: Mercadinho João)
+    └── Unidade (ex: Matriz)
+        └── Caixas
+```
 
 ### Estrutura do Projeto
 ```
@@ -179,23 +208,19 @@ bagplus-loyalty-system/
 │   ├── gestor/             # Dashboard gerencial
 │   ├── admin/              # Painel administrativo
 │   └── cliente/            # App cliente (mobile + web)
-├── services/backend/       # API FastAPI (95% completo)
+├── services/backend/       # API FastAPI
 │   ├── app/
-│   │   ├── routers/       # 14 módulos de endpoints
+│   │   ├── routers/       # 16 módulos de endpoints
+│   │   │   └── admin/     # 12 módulos administrativos
 │   │   ├── core/          # Lógica central + QR Code generator
 │   │   ├── middleware/    # Autenticação + terminais
-│   │   └── db/            # SQLAlchemy models
+│   │   └── db/            # SQLAlchemy models + migrations
 ├── storage/                # QR Codes e arquivos
-│   └── qrcodes/
-│       ├── csv/           # Lotes para importação
-│       ├── pdf/           # PDFs para gráfica
-│       └── ultimo_id.txt  # Controle de sequência
-├── scripts/                # Geração de QR Codes (CLI)
-└── infra/                  # Infraestrutura e docs
+└── scripts/                # Geração de QR Codes (CLI)
 ```
 
 ### Endpoints Disponíveis
-**Total:** 58 endpoints de API operacionais (`/api`) + 3 rotas auxiliares (`/`, `/docs`, `/redoc`) = **61 rotas HTTP**
+**Total:** 69 endpoints de API operacionais
 
 **Públicos (24):**
 - 9 endpoints de clientes
@@ -203,7 +228,7 @@ bagplus-loyalty-system/
 - 4 endpoints de notificações
 - 3 endpoints de autenticação
 
-**Admin (34):**
+**Admin (45):**
 - 5 endpoints de relatórios
 - 5 endpoints de gestão de usuários
 - 2 endpoints de alertas
@@ -214,6 +239,8 @@ bagplus-loyalty-system/
 - 3 endpoints de exportação
 - 3 endpoints de notificações
 - 1 endpoint de auditoria
+- 6 endpoints de entidades ← SaaS
+- 5 endpoints de unidades ← SaaS
 
 ## Público-Alvo
 
@@ -247,10 +274,24 @@ bagplus-loyalty-system/
 - Exportação de dados para campanhas
 - Análise por terminal (qual caixa vende mais)
 
+## Modelo de Negócio SaaS
+
+### Pricing (planejado)
+- **R$ 199/mês por entidade** — acesso completo à plataforma
+- Cada entidade pode ter quantas unidades precisar
+- Admin global gerencia todas as entidades
+
+### O que está incluso
+- Acesso à API completa
+- Dashboard e relatórios
+- Suporte técnico
+- Atualizações de segurança
+- Infraestrutura AWS
+
 ## Estratégia de Implementação
 
 ### 1. Fase Piloto (3-6 meses)
-- Backend completo (95% pronto)
+- Backend completo (98% pronto)
 - Interface de caixa
 - Dashboard administrativo
 - App do cliente
@@ -299,6 +340,7 @@ bagplus-loyalty-system/
 - ROI mensurável
 - Rastreamento por terminal
 - Controle total sobre geração de QR Codes
+- Metas de desconto personalizadas por estabelecimento
 
 ### Para o Meio Ambiente
 - Redução quantificada de plástico
@@ -312,7 +354,8 @@ bagplus-loyalty-system/
 Este software está disponível para licenciamento comercial.
 
 ### O que está incluído:
-- Backend completo (58 endpoints de API)
+- Backend completo (69 endpoints de API)
+- Arquitetura SaaS multi-tenant
 - Sistema de autenticação e segurança
 - Sistema de terminais
 - Dashboard administrativo
@@ -347,11 +390,12 @@ Este software está disponível para licenciamento comercial.
 
 **Acesso ao Sistema:**
 - Swagger UI com tema dark profissional
-- 58 endpoints documentados
+- 69 endpoints documentados
 - Exemplos de requisições
 - Teste de autenticação e permissões
 - Geração de QR Codes via interface
 - Simulação de vendas por terminal
+- Gestão de entidades e unidades (SaaS)
 
 **Instruções:**
 Consulte o [README.md](./README.md) para instruções de instalação e teste local.

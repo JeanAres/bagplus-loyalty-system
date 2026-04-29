@@ -4,7 +4,7 @@
 > para avaliação e portfólio, mas **uso comercial requer licença**. 
 > Entre em contato para implementação: jean06soares@gmail.com
 
-Sistema completo de gerenciamento de sacolas reutilizáveis com programa de recompensas, autenticação JWT com roles, sistema de terminais, QR Codes com segurança anti-falsificação, detecção automática de fraudes, sistema de suspensão de clientes, relatórios gerenciais avançados, logs de auditoria, exportação de dados e proteção contra ataques com rate limiting.
+Sistema completo de gerenciamento de sacolas reutilizáveis com programa de recompensas, autenticação JWT com roles, arquitetura **SaaS multi-tenant** (entidades e unidades), sistema de terminais, QR Codes com segurança anti-falsificação, detecção automática de fraudes, sistema de suspensão de clientes, relatórios gerenciais avançados, logs de auditoria, exportação de dados e proteção contra ataques com rate limiting.
 
 > Para entender o conceito e proposta do negócio, veja [PROPOSTA.md](PROPOSTA.md)
 
@@ -65,13 +65,24 @@ Status: Quando rodando
 
 ## Funcionalidades Implementadas
 
+### Multi-Tenancy SaaS
+- **Entidades** - Estabelecimentos independentes (ex: Zaffari, Mercadinho João)
+- **Unidades** - Filiais físicas de cada entidade (ex: Zaffari Iguatemi, Zaffari Cavalhada)
+- **Isolamento de dados** - Gerente/Caixa vê apenas dados da sua unidade
+- **Admin global** - Visão consolidada de todas entidades e unidades
+- **Descontos por entidade** - Cada entidade define sua própria meta de desconto
+- **Progresso separado** - Cliente acumula usos por entidade (Zaffari e Mercadinho são independentes)
+- **JWT multi-tenant** - Token inclui entidade_id e unidade_id do usuário
+- **Sistema de migrations** - Versionamento do schema com migrations SQL numeradas
+
 ### Autenticação e Controle de Acesso
 - **Sistema JWT completo** - Autenticação com tokens (12h caixa, 24h admin/gerente)
+- **Multi-tenant no token** - entidade_id e unidade_id incluídos no payload JWT
 - **Sistema de terminais** - Rastreamento por caixa (terminal no token JWT)
 - **Gestão de usuários** - Criar, editar, listar e desativar usuários
 - **Sistema de roles** - Admin, Gerente, Caixa com permissões granulares
-- **35 endpoints protegidos** - Controle de acesso por role
-- **Logs de auditoria** - Rastreamento completo: quem, quando, onde (terminal), de onde (IP)
+- **35+ endpoints protegidos** - Controle de acesso por role
+- **Logs de auditoria** - Rastreamento completo: quem, quando, onde (terminal), de onde (IP), qual entidade/unidade
 - **Token de desenvolvimento** - Gerado automaticamente ao iniciar servidor
 - **Middleware de autenticação** - Validação automática em todos endpoints admin
 
@@ -128,11 +139,15 @@ Status: Quando rodando
 - **Exclusão restritiva** - DELETE protegido por role admin
 
 ### Sistema de Descontos
-- **Desconto por Fidelidade** - Marcos: 10, 20, 30, 40 usos
-- **Desconto por Devolução** - Baseado no estado da sacola
-  - Verde (0-15 usos, até 60 dias): R$ 40,00
-  - Amarelo (16-25 usos, até 80 dias): R$ 20,00
-  - Vermelho (26-40 usos, até 90 dias): R$ 10,00
+- **Desconto por Fidelidade** - Marcos: 10, 20, 30, 40 usos (global, por sacola)
+- **Desconto por Devolução** - Baseado no estado da sacola (global)
+  - O mais restritivo entre usos e dias vence
+  - Verde (até 15 usos / até 60 dias): R$ 40,00
+  - Amarelo (até 25 usos / até 80 dias): R$ 20,00
+  - Vermelho (até 40 usos / até 90 dias): R$ 10,00
+- **Desconto por Meta (por entidade)** - Cada entidade define percentual e quantidade de usos necessários
+  - Progresso rastreado por cliente/entidade em `descontos_cliente_entidade`
+  - Independente entre entidades (Zaffari e Mercadinho são separados)
 
 ### Gerenciamento de Lotes
 - **Geração em massa de QR Codes** - Até 10.000 sacolas por lote
@@ -159,7 +174,7 @@ Status: Quando rodando
 
 ### Auditoria e Compliance
 - **Logs automáticos** - Todas ações admin registradas automaticamente
-- **Rastreamento completo** - Usuário, terminal, IP, timestamp
+- **Rastreamento completo** - Usuário, terminal, IP, timestamp, entidade, unidade
 - **Consulta de logs** - Filtros por data, usuário (busca parcial), ação, entidade
 - **Detalhes em JSON** - Informações completas sobre cada operação
 - **Filtro username** - Busca parcial case-insensitive (ex: "joão" encontra "joão.silva")
@@ -214,7 +229,7 @@ cd bagplus-loyalty-system
 # 2. Navegar para backend
 cd services/backend
 
-# 3. Criar ambiente virtual
+# 3. Criar ambiente virtual (fora do OneDrive se usar Windows)
 python -m venv venv
 
 # 4. Ativar ambiente virtual
@@ -398,7 +413,8 @@ username=DEV_ADMIN_USERNAME&password=DEV_ADMIN_PASSWORD
     "nome": "Caixa Teste",
     "role": "caixa",
     "terminal": "caixa 2",
-    "ativo": true
+    "entidade_id": 1,
+    "unidade_id": 1
   }
 }
 ```
@@ -421,15 +437,17 @@ Content-Type: application/json
 #### 🔴 Admin (Acesso Total)
 - ✅ Todos os endpoints administrativos
 - ✅ Criar, editar e desativar usuários
+- ✅ Gerenciar entidades e unidades (SaaS)
 - ✅ Gerar QR Codes (API)
 - ✅ Suspender e reativar clientes
 - ✅ Transferir sacolas entre clientes
 - ✅ Resetar contador de utilizações
 - ✅ Todos relatórios e exportações
 - ✅ Ver logs de auditoria
+- ✅ entidade_id=NULL (visão global)
 
 #### 🟡 Gerente (Acesso Gerencial)
-- ✅ Dashboard e relatórios
+- ✅ Dashboard e relatórios (filtrado por unidade)
 - ✅ Relatório vendas-por-terminal
 - ✅ Importar e gerenciar lotes
 - ✅ Download de QR Codes gerados
@@ -444,6 +462,7 @@ Content-Type: application/json
 - ✅ Resetar contador
 - ❌ Criar/editar usuários
 - ❌ Gerar QR Codes
+- ❌ Gerenciar entidades/unidades
 
 #### 🟢 Caixa (Operacional Apenas)
 - ✅ Cadastrar clientes
@@ -469,21 +488,21 @@ Content-Type: application/json
 
 ```
 bagplus-loyalty-system/
-├── Dockerfile                  # Receita da imagem Docker
-├── docker-compose.yml          # Orquestração de containers
-├── .env                        # Variáveis de ambiente (NÃO commitar!)
-├── .env.example                # Template de variáveis
+├── Dockerfile
+├── docker-compose.yml
+├── .env
+├── .env.example
 ├── .gitignore
 ├── README.md
 ├── PROPOSTA.md
 ├── CONTRIBUTING.md
 │
-├── services/                   # Backend
-│   └── backend/               # API FastAPI
-│       ├── app/              # Aplicação modular
-│       │   ├── main.py       # Configuração FastAPI
-│       │   ├── routers/      # Endpoints da API
-│       │   │   ├── admin/   # Endpoints administrativos (10 módulos)
+├── services/
+│   └── backend/
+│       ├── app/
+│       │   ├── main.py
+│       │   ├── routers/
+│       │   │   ├── admin/
 │       │   │   │   ├── lotes.py
 │       │   │   │   ├── suspensao.py
 │       │   │   │   ├── alertas.py
@@ -493,55 +512,63 @@ bagplus-loyalty-system/
 │       │   │   │   ├── usuarios.py
 │       │   │   │   ├── auditoria.py
 │       │   │   │   ├── notificacoes.py
-│       │   │   │   └── qrcodes.py
-│       │   │   ├── clientes.py
+│       │   │   │   ├── qrcodes.py
+│       │   │   │   ├── entidades.py      
+│       │   │   │   └── unidades.py      
 │       │   │   ├── sacolas.py
 │       │   │   ├── notificacoes.py
 │       │   │   └── auth.py
-│       │   ├── core/         # Lógica central
+│       │   ├── core/
 │       │   │   ├── security.py
 │       │   │   ├── audit.py
 │       │   │   ├── helpers.py
 │       │   │   ├── notifications.py
 │       │   │   └── qrcode_generator.py
-│       │   ├── db/           # Banco de dados
-│       │   │   ├── models.py
-│       │   │   └── session.py
-│       │   └── middleware/   # Middlewares
-│       │       └── auth.py
-│       ├── docs/             # Documentação Swagger
-│       ├── scripts/          # Scripts de desenvolvimento
-│       ├── data/             # Banco de dados SQLite
-│       │   └── bagplus.db
-│       ├── run.py            # Launcher principal
+│       │   ├── db/
+│       │   │   ├── models.py             
+│       │   │   ├── session.py
+│       │   │   ├── migration_runner.py
+│       │   │   └── migrations/
+│       │   │       ├── 001_initial_schema.sql
+│       │   │       ├── 002_add_features.sql
+│       │   │       └── 003_add_multi_tenancy.sql
+│       │   └── middleware/
+│       │       └── auth.py              
+│       ├── docs/
+│       ├── scripts/
+│       ├── data/
+│       │   ├── bagplus.db
+│       │   └── bagplus_staging.db
+│       ├── test_models.py
+│       ├── run.py
 │       ├── requirements.txt
 │       └── .env
 │
-├── apps/                      # Frontends (preparado)
-│   └── shared/               # Componentes compartilhados
+├── apps/
+│   └── shared/
 │
-├── storage/                   # Arquivos gerados
+├── storage/
 │   ├── qrcodes/
-│   │   ├── csv/              # CSVs dos lotes
-│   │   ├── pdf/              # PDFs para impressão
-│   │   └── ultimo_id.txt     # Controle de sequência
-│   ├── storage-prod/         # Uploads produção (Docker)
-│   └── storage-staging/      # Uploads staging (Docker)
+│   │   ├── csv/
+│   │   ├── pdf/
+│   │   └── ultimo_id.txt
+│   ├── storage-prod/
+│   └── storage-staging/
 │
-├── scripts/                   # Scripts auxiliares
+├── scripts/
 │   ├── qrcodes/
-│   │   ├── gerar_qrcodes.py  # Script CLI (usa módulo core)
+│   │   ├── gerar_qrcodes.py
 │   │   └── limpar_qrcodes.py
 │   └── database/
 │       └── seed_data.py
 │
-├── infra/                    # Infraestrutura
+├── infra/
 │   └── database/
 │
-├── docs/                     # Documentação geral
+├── docs/
 │   └── SCANNER-REMOTE-KEYBOARD.md
 │
-└── tests/                    # Testes (preparado)
+└── tests/
 ```
 
 ---
@@ -560,7 +587,7 @@ bagplus-loyalty-system/
 - **slowapi** - Rate limiting para proteção de API
 
 ### Autenticação e Segurança
-- **python-jose[cryptography]** - Tokens JWT
+- **python-jose[cryptography]** - Tokens JWT com multi-tenancy
 - **passlib[bcrypt]** - Hash de senhas
 - **python-multipart** - Suporte a formulários de login
 
@@ -581,7 +608,7 @@ bagplus-loyalty-system/
 
 ---
 
-## API Endpoints (58 de API / 61 rotas HTTP totais)
+## API Endpoints (69 endpoints operacionais)
 
 > **Documentação completa e interativa:**
 > - Produção: `https://api.bagplus.com.br/docs`
@@ -601,15 +628,59 @@ bagplus-loyalty-system/
 ### Admin - Usuários (5 endpoints - Variado)
 ### Admin - Auditoria (1 endpoint - Admin + Gerente)
 ### Admin - Notificações (3 endpoints - Admin + Gerente)
-### Admin - QR Codes (4 endpoints - Admin/Gerente)
+### Admin - QR Codes (4 endpoints - Admin)
+### Admin - Entidades (6 endpoints - Admin) 
+### Admin - Unidades (5 endpoints - Admin) 
 
-*(Detalhamento completo dos 58 endpoints de API disponível em `/docs` de cada ambiente)*
+*(Detalhamento completo disponível em `/docs` de cada ambiente)*
 
 ---
 
 ## Banco de Dados
 
-### Tabelas (8 total)
+### Tabelas (14 total)
+
+#### entidades ← Sprint 10
+- id (PK)
+- nome_comercial
+- cnpj (único)
+- meta_desconto_percentual
+- meta_desconto_quantidade_usos
+- ativo
+
+#### unidades ← Sprint 10
+- id (PK)
+- entidade_id (FK)
+- nome
+- endereco, cidade, estado
+- ativo
+
+#### descontos_cliente_entidade ← Sprint 10
+- id (PK)
+- cliente_id (FK)
+- entidade_id (FK)
+- usos_count
+- proximo_desconto_percentual
+- ultima_atualizacao
+
+#### terminais ← Sprint 10
+- id (PK)
+- numero
+- entidade_id (FK)
+- unidade_id (FK)
+- ativo
+
+#### usos_sacola ← Sprint 10
+- id (PK)
+- sacola_id (FK)
+- entidade_id (FK)
+- unidade_id (FK)
+- terminal_id (FK)
+- usuario_id (FK)
+- valor_compra
+- desconto_aplicado
+- tipo_desconto
+- data_hora
 
 #### clientes
 - cpf (PK)
@@ -628,6 +699,7 @@ bagplus-loyalty-system/
 - cliente_cpf (FK)
 - data_vinculacao
 - utilizacoes
+- vida_util_dias (padrão: 365)
 - ultima_utilizacao
 - data_devolucao
 
@@ -642,7 +714,7 @@ bagplus-loyalty-system/
 - data_fabricacao
 - data_importacao
 - quantidade
-- inicio, fim - Range de IDs
+- inicio, fim
 
 #### alertas
 - id (PK)
@@ -661,20 +733,24 @@ bagplus-loyalty-system/
 - password_hash (bcrypt)
 - nome
 - role (admin/gerente/caixa)
-- ativo (bool)
+- entidade_id (FK, NULL para admins) ← Sprint 10
+- unidade_id (FK, NULL para admins) ← Sprint 10
+- ativo
 - data_criacao
 - ultimo_login
 
 #### logs_auditoria
 - id (PK)
 - usuario_id (FK)
-- usuario_username
-- acao (string)
-- entidade_tipo (Cliente/Sacola/Usuario/Alerta/Lote/QRCode)
-- entidade_id (string)
-- detalhes (JSON) - Inclui terminal, IP, dados específicos
-- ip_address
-- data_hora
+- entidade_id (FK) ← Sprint 10
+- unidade_id (FK) ← Sprint 10
+- terminal_id (FK) ← Sprint 10
+- acao
+- tabela
+- registro_id
+- detalhes (JSON)
+- ip
+- timestamp
 
 #### notificacoes
 - id (PK)
@@ -682,7 +758,7 @@ bagplus-loyalty-system/
 - tipo (enum)
 - titulo
 - mensagem
-- lida (bool)
+- lida
 - data_criacao
 
 ---
@@ -709,20 +785,6 @@ Authorization: Bearer {token}
 }
 ```
 
-**Response:**
-```json
-{
-  "sucesso": true,
-  "mensagem": "Lote de 100 QR Codes gerado com sucesso",
-  "intervalo": "BAG-00001 até BAG-00100",
-  "data_criacao": "2026-04-15",
-  "links_download": {
-    "csv": "/api/admin/qrcodes/download/csv/lote_00001-00100.csv",
-    "pdf": "/api/admin/qrcodes/download/pdf/lote_00001-00100_IMPRESSAO.pdf"
-  }
-}
-```
-
 #### 3. Download dos arquivos
 ```http
 GET /api/admin/qrcodes/download/csv/lote_00001-00100.csv
@@ -743,121 +805,47 @@ fim: 100
 
 ### Opção 2: Via Script CLI
 
-#### 1. Executar script
 ```bash
 cd scripts/qrcodes
 python gerar_qrcodes.py
 ```
 
-#### 2. Seguir prompts interativos
-```
- Quantos QR Codes gerar? (1-10000): 100
- Data de criação [2026-04-15]: 
- Formatos: 1-CSV, 2-PDF, 3-Ambos [3]: 3
- Confirmar geração? (S/N): S
-```
-
-#### 3. Arquivos gerados
-```
-storage/qrcodes/
-├── csv/lote_00001-00100.csv
-├── pdf/lote_00001-00100_IMPRESSAO.pdf
-└── ultimo_id.txt (atualizado para 100)
-```
-
-#### 4. Importar via API
-```http
-POST /api/admin/lotes/importar
-data_fabricacao: 2026-03-31
-inicio: 1
-fim: 100
-```
-
-> **Sincronização:** API e CLI compartilham o mesmo `ultimo_id.txt`, garantindo sequência única!
-
 ---
 
-## Testando o Sistema
+## Testando o Sistema (Fluxo Multi-Tenant)
 
-### Fluxo Completo de Teste
-
-#### 0. Obter Token JWT
-```bash
-# Iniciar servidor
-python run.py
-
-# Copiar token exibido no console
-# OU fazer login via API
-```
-
+#### 1. Login como admin e criar entidade
 ```http
-POST /api/auth/login
-username: caixa_teste
-password: senha123
-terminal: caixa 2
+POST /api/admin/entidades
+nome_comercial: Zaffari
+cnpj: 00000000000191
+meta_desconto_percentual: 10.0
+meta_desconto_quantidade_usos: 10
 ```
 
-#### 1. Autorizar no Swagger
-```
-1. Abrir http://localhost:8000/docs
-2. Clicar em "Authorize" (cadeado)
-3. Colar: Bearer {token}
-4. Clicar em "Authorize"
-```
-
-#### 2. Gerar QR Codes (Admin)
+#### 2. Criar unidade
 ```http
-POST /api/admin/qrcodes/gerar
-{
-  "quantidade": 5,
-  "formatos": ["csv", "pdf"]
-}
+POST /api/admin/unidades
+entidade_id: 1
+nome: Iguatemi
+cidade: Porto Alegre
+estado: RS
 ```
 
-#### 3. Importar Lote
+#### 3. Criar gerente vinculado à unidade
 ```http
-POST /api/admin/lotes/importar
-data_fabricacao: 2026-04-15
-inicio: 1
-fim: 5
+PUT /api/admin/usuarios/{id}
+entidade_id: 1
+unidade_id: 1
+role: gerente
 ```
 
-#### 4. Cadastrar Cliente
+#### 4. Fluxo operacional normal
 ```http
-POST /api/clientes
-cpf: 12345678900
-nome: João Silva
-```
-
-#### 5. Ativar Sacola
-```http
-POST /api/sacolas/ativar
-qr_code: BAG-00001:2026-04-15:757314  # Do CSV
-cpf_cliente: 12345678900
-```
-
-#### 6. Registrar Uso (Caixa)
-```http
-POST /api/sacolas/registrar-uso
-Authorization: Bearer {token_caixa_com_terminal}
-
-sacola_id: BAG-00001
-valor_compra: 125,50
-```
-
-#### 7. Ver Relatório por Terminal
-```http
-GET /api/admin/relatorios/vendas-por-terminal?data=2026-04-15
-```
-
-#### 8. Ver Dashboard
-```http
-GET /api/admin/relatorios/dashboard
-```
-
-#### 9. Consultar Logs de Auditoria
-```http
-GET /api/admin/auditoria/logs?usuario_username=caixa_teste
+POST /api/clientes           # Cadastrar cliente
+POST /api/sacolas/ativar     # Ativar sacola
+POST /api/sacolas/registrar-uso  # Registrar uso
+GET  /api/admin/relatorios/dashboard  # Ver relatório
 ```
 
 ---
@@ -866,29 +854,19 @@ GET /api/admin/auditoria/logs?usuario_username=caixa_teste
 
 ### Variáveis de Ambiente (.env)
 ```env
-# Banco de Dados
 DATABASE_URL=sqlite:///./data/bagplus.db
-
-# Ambiente
 ENVIRONMENT=development
-
-# API
 API_HOST=0.0.0.0
 API_PORT=8000
-
-# Segurança (OBRIGATÓRIO - Gerar com: openssl rand -hex 32)
 SECRET_KEY=sua_chave_secreta_unica_aqui_256bits
 JWT_SECRET_KEY=outra_chave_secreta_para_jwt_256bits
-
-# Credenciais de Desenvolvimento (criadas automaticamente)
 DEV_ADMIN_USERNAME=dev_admin
 DEV_ADMIN_PASSWORD=ProjetoBag+2026
 ```
 
-> **IMPORTANTE:** 
+> **IMPORTANTE:**
 > - A mesma `SECRET_KEY` deve estar no servidor e no script de geração de QR Codes
-> - `DEV_ADMIN_USERNAME` e `DEV_ADMIN_PASSWORD` são criados automaticamente em modo development
-> - Em produção, definir `ENVIRONMENT=production` desativa criação automática
+> - Em produção, definir `ENVIRONMENT=production` desativa criação automática do admin dev
 > - NUNCA commitar .env no Git!
 
 ---
@@ -897,54 +875,17 @@ DEV_ADMIN_PASSWORD=ProjetoBag+2026
 
 ### Proteções Implementadas
 
-1. **Anti-falsificação de QR Codes**
-   - Checksum SHA256 único por sacola
-   - Validação dupla (código + banco)
-   - Impossível gerar QR Code válido sem SECRET_KEY
-
-2. **Anti-fraude de Uso**
-   - Intervalo mínimo 4 horas entre usos
-   - Detecção automática de padrões suspeitos
-   - Sistema de alertas com gravidade
-   - Autenticação obrigatória para registrar uso
-
-3. **Controle de Acesso**
-   - Sistema de suspensão de clientes
-   - Bloqueio permanente quando necessário
-   - Registro de motivos e datas
-
-4. **Autenticação e Autorização**
-   - JWT com expiração diferenciada (12h caixa, 24h admin/gerente)
-   - Hash de senhas com bcrypt (custo 12)
-   - Controle granular por roles (admin/gerente/caixa)
-   - 35 endpoints protegidos
-   - Middleware de autenticação automática
-   - Sistema de terminais para rastreabilidade
-
-5. **Auditoria Completa**
-   - Histórico completo de eventos
-   - Logs de todas ações administrativas
-   - Rastreamento: quem, quando, onde (terminal), de onde (IP)
-   - Exportação de dados para análise
-   - Rastreamento de transferências e resets
-   - Detalhes completos em JSON
-
-6. **Rate Limiting**
-   - Login limitado a 5 tentativas por minuto
-   - Proteção contra ataques de força bruta
-   - Limite global de 1000 req/hora
-   - Identificação por usuário autenticado ou IP
+1. **Anti-falsificação de QR Codes** - Checksum SHA256 único por sacola
+2. **Anti-fraude de Uso** - Intervalo mínimo, detecção de padrões, autenticação obrigatória
+3. **Controle de Acesso** - Suspensão, bloqueio permanente, registro de motivos
+4. **Autenticação e Autorização** - JWT multi-tenant, bcrypt, roles granulares, middleware automático
+5. **Auditoria Completa** - Quem, quando, onde (terminal), de onde (IP), qual entidade/unidade
+6. **Rate Limiting** - Login (5/min), global (1000/hora), identificação por usuário ou IP
+7. **Isolamento Multi-Tenant** - Gerente/Caixa restritos à sua unidade
 
 ---
 
 ## Suporte
-
-### Scanner de QR Code
-
-Ver documentação completa: [docs/SCANNER-REMOTE-KEYBOARD.md](docs/SCANNER-REMOTE-KEYBOARD.md)
-
-**Produção:** Leitor USB (pistolinha)  
-**Testes:** Remote Keyboard (Android)
 
 ### Problemas Comuns
 
@@ -963,21 +904,18 @@ pip install -r services/backend/requirements.txt
 #### Erro: "Not authenticated" ou "Insufficient permissions"
 - Verificar se token JWT está sendo enviado no header Authorization
 - Verificar se token não expirou (12h caixa, 24h admin/gerente)
-- Verificar se usuário tem a role necessária para o endpoint
-- Caixas precisam incluir terminal no login
+- Verificar se usuário tem a role e entidade/unidade necessárias
 
 #### Erro: "Port already in use"
 ```bash
 # Windows
 netstat -ano | findstr :8000
 taskkill /PID <PID> /F
-
-# Linux/Mac
-lsof -i :8000
-kill -9 <PID>
-
-# Ou trocar porta no docker-compose.yml
 ```
+
+#### venv não instala no Windows (OneDrive)
+- Criar a venv fora do OneDrive: `python -m venv C:\venvs\bagplus`
+- Ou pausar sincronização do OneDrive antes de criar a venv
 
 ---
 
@@ -998,8 +936,9 @@ Este é um projeto comercial proprietário. O código está disponível para ava
 
 ---
 
-**Versão:** v0.93-beta  
-**Endpoints:** 58 de API (61 rotas HTTP totais)  
-**Atualizado:** 15/04/2026  
-**Arquitetura:** Modular Monorepo + Docker  
+**Versão:** v0.94-beta  
+**Endpoints:** 69 operacionais  
+**Tabelas:** 14  
+**Atualizado:** 29/04/2026  
+**Arquitetura:** SaaS Multi-Tenant + Modular Monorepo + Docker  
 **Status:** 🟢 Produção Online (AWS São Paulo)

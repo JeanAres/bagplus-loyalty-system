@@ -435,23 +435,30 @@ services/backend/
 ├── app/
 │   ├── routers/        # Novos endpoints aqui
 │   │   ├── admin/      # Endpoints administrativos
-│   │   │   ├── qrcodes.py      # Geração de QR Codes
-│   │   │   ├── relatorios.py   # Relatórios
-│   │   │   ├── usuarios.py     # Gestão de usuários
+│   │   │   ├── qrcodes.py
+│   │   │   ├── relatorios.py
+│   │   │   ├── usuarios.py
+│   │   │   ├── entidades.py     
+│   │   │   ├── unidades.py     
 │   │   │   └── ...
 │   │   ├── clientes.py
 │   │   ├── sacolas.py
 │   │   └── auth.py
-│   ├── core/           # Lógica de negócio
+│   ├── core/
 │   │   ├── security.py
 │   │   ├── audit.py
 │   │   ├── helpers.py
-│   │   └── qrcode_generator.py  # Módulo QR Codes reutilizável
-│   ├── db/             # Models e sessão
-│   │   ├── models.py
-│   │   └── session.py
-│   └── middleware/     # Middleware customizado
-│       └── auth.py
+│   │   └── qrcode_generator.py
+│   ├── db/
+│   │   ├── models.py            
+│   │   ├── session.py
+│   │   ├── migration_runner.py  
+│   │   └── migrations/          
+│   │       ├── 001_initial_schema.sql
+│   │       ├── 002_add_features.sql
+│   │       └── 003_add_multi_tenancy.sql
+│   └── middleware/
+│       └── auth.py              
 ```
 
 ### Frontend Caixa
@@ -642,5 +649,5 @@ git reset HEAD <arquivo>
 
 ---
 
-**Última atualização:** 15/04/2026  
-**Versão:** 3.1 (Adicionada estrutura QR Codes e comandos API)
+**Última atualização:** 29/04/2026  
+**Versão:** 3.2 (Adicionada estrutura multi-tenancy)
