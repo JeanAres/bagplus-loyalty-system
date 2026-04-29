@@ -3,7 +3,7 @@ Metadados e configuração da documentação da API
 """
 
 TITLE = "Bag+ API"
-VERSION = "0.93-beta"
+VERSION = "0.94-beta"
 
 DESCRIPTION = """
 **Solução integrada para gestão de sacolas reutilizáveis e fidelização sustentável.**
@@ -19,7 +19,7 @@ A API Bag+ fornece um ecossistema completo para operações de balcão e gestão
 *   **Comunicação:** Sistema de notificações push e broadcast para engajamento.
 
 ---
-**Suporte Técnico:** [jean06soares@gmail.com](mailto:jean06soares@gmail.com) | **Total:** 58 endpoints operacionais.
+**Suporte Técnico:** [jean06soares@gmail.com](mailto:jean06soares@gmail.com) | **Total:** 69 endpoints operacionais.
 """
 
 CONTACT = {
@@ -92,6 +92,14 @@ TAGS_METADATA = [
     {
         "name": "Admin - QR Codes",
         "description": "**Geração de QR Codes** - Lotes sequenciais, download CSV/PDF, histórico de geração | *Requer: Admin*"
+    },
+    {
+        "name": "Admin - Entidades",
+        "description": "**Gestão de Entidades** - Cadastro de estabelecimentos, metas de desconto, listagem de unidades | *Requer: Admin*"
+    },
+    {
+        "name": "Admin - Unidades",
+        "description": "**Gestão de Unidades** - Filiais de cada entidade, endereços, ativação/desativação | *Requer: Admin*"
     }
 ]
 

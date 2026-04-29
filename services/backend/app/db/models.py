@@ -28,9 +28,9 @@ class StatusBeneficios(str, enum.Enum):
 
 class TipoAlerta(str, enum.Enum):
     """Tipos de alertas de fraude"""
-    valores_diferentes = "valores_diferentes"
+    valores_diferentes_mesmo_dia = "valores_diferentes_mesmo_dia"
+    valor_repetido_dias_diferentes = "valor_repetido_dias_diferentes"
     abuso_valor_minimo = "abuso_valor_minimo"
-    padrao_valores_repetidos = "padrao_valores_repetidos"
 
 class GravidadeAlerta(str, enum.Enum):
     """Gravidade do alerta"""
@@ -54,7 +54,7 @@ class TipoNotificacao(str, enum.Enum):
 
 
 # ============================================
-# MODELS MULTI-TENANCY (Sprint 10)
+# MODELS MULTI-TENANCY
 # ============================================
 
 class Entidade(Base):
