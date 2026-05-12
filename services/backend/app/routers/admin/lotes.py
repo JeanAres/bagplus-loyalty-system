@@ -126,6 +126,7 @@ def importar_lote_csv(
         # Criar sacola
         sacola = models.Sacola(
             id=sacola_id,
+            qrcode=f"{sacola_id}:{data_fabricacao}:{checksum}",
             data_criacao=data_fabricacao,
             checksum=checksum,
             status=models.StatusSacola.estoque,

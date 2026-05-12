@@ -13,36 +13,14 @@ from app.core.qrcode_generator import (
     STORAGE_DIR
 )
 from app.core.audit import registrar_log
-from pydantic import BaseModel, Field, validator
-from typing import List, Optional
 from datetime import datetime
 import os
+import json
 
 router = APIRouter(
     prefix="/api/admin/qrcodes",
     tags=["Admin - QR Codes"],
 )
-
-
-class GerarLoteRequest(BaseModel):
-    """Request para gerar lote de QR Codes"""
-    quantidade: int = Field(..., ge=1, le=10000, description="Quantidade de QR Codes (1 a 10.000)")
-    data_criacao: Optional[str] = Field(None, description="Data de criação (YYYY-MM-DD). Default: hoje")
-    formatos: List[str] = Field(default=["csv", "pdf"], description="Formatos a gerar: 'csv', 'pdf' ou ambos")
-    
-    @validator('data_criacao', pre=True, always=True)
-    def validar_data(cls, v):
-        """Valida e normaliza data_criacao"""
-        # Se vier "string" ou vazio, retornar None (usa data de hoje)
-        if not v or v == "string" or v == "":
-            return None
-        
-        # Se vier data, validar formato YYYY-MM-DD
-        try:
-            datetime.strptime(v, '%Y-%m-%d')
-            return v
-        except ValueError:
-            raise ValueError("Data deve estar no formato YYYY-MM-DD (ex: 2026-04-15)")
 
 
 @router.get(
@@ -54,20 +32,15 @@ def consultar_ultimo_id(
 ):
     """
     Retorna o último ID de QR Code gerado no sistema.
-    
+
     **Quando usar:**
     - Verificar próximo ID antes de gerar lote
     - Auditoria de controle de sequência
     - Planejamento de impressão
-    
-    **Retorna:**
-    - ultimo_id: Último ID usado (0 se nenhum gerado ainda)
-    - proximo_id: Próximo ID que será gerado
-    - proximo_intervalo: Exemplo do próximo lote
     """
     ultimo_id = ler_ultimo_id()
     proximo_id = ultimo_id + 1
-    
+
     return {
         "ultimo_id": ultimo_id,
         "ultimo_gerado": f"BAG-{ultimo_id:05d}" if ultimo_id > 0 else "Nenhum",
@@ -82,69 +55,73 @@ def consultar_ultimo_id(
     summary="Gerar lote de QR Codes"
 )
 def gerar_lote(
-    dados: GerarLoteRequest,
+    quantidade: int,
     request: Request,
     db: Session = Depends(get_db),
+    data_criacao: str = None,
+    gerar_csv: bool = True,
+    gerar_pdf: bool = True,
     current_user: models.Usuario = Depends(require_role(["admin"]))
 ):
     """
     Gera um novo lote de QR Codes sequenciais.
-    
-    **AUTENTICAÇÃO:**
-    - Apenas administradores podem gerar QR Codes
-    - Ação registrada em log de auditoria
-    
-    **PARÂMETROS:**
+
+    **Permissão:** Admin
+
+    **Parâmetros:**
     - quantidade: Número de QR Codes (1 a 10.000)
     - data_criacao: Data opcional (YYYY-MM-DD). Deixe vazio para usar hoje
-    - formatos: ["csv"], ["pdf"] ou ["csv", "pdf"]
-    
-    **COMPORTAMENTO:**
-    - IDs são sequenciais e NUNCA se repetem
-    - Cada ambiente (local/staging/prod) mantém sua própria sequência
-    - CSV contém dados completos para importação no banco
-    - PDF formatado para impressão em gráfica
-    
-    **RETORNA:**
-    - Informações do lote gerado
-    - Links para download dos arquivos
-    - Intervalo de IDs gerados
-    
-    **EXEMPLO:**
-    json
-    {
-      "quantidade": 100,
-      "formatos": ["csv", "pdf"]
-    }
+    - gerar_csv: Gerar arquivo CSV para importação (padrão: true)
+    - gerar_pdf: Gerar arquivo PDF para impressão (padrão: true)
 
-    
-    **IMPORTANTE:**
-    - Após gerar, importe o CSV no banco via /api/admin/sacolas/importar-lote
-    - Guarde o PDF para enviar à gráfica
-    - Não gere lotes duplicados (IDs são únicos no sistema)
+    **Observação:** Após gerar, importe o CSV via /api/admin/lotes/importar
     """
-    
-    # Pegar SECRET_KEY do ambiente
+
     from app.core.security import SECRET_KEY
-    
+
     if not SECRET_KEY:
         raise HTTPException(
             status_code=500,
             detail="Configuração inválida: SECRET_KEY não encontrada"
         )
-    
-    try:
-        # Gerar lote
-        resultado = gerar_lote_qrcodes(
-            quantidade=dados.quantidade,
-            secret_key=SECRET_KEY,
-            data_criacao=dados.data_criacao,
-            formatos=dados.formatos
+
+    if quantidade < 1 or quantidade > 10000:
+        raise HTTPException(
+            status_code=400,
+            detail="Quantidade deve ser entre 1 e 10.000"
         )
-        
-        # Registrar log de auditoria
+
+    if data_criacao:
+        try:
+            datetime.strptime(data_criacao, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Data deve estar no formato YYYY-MM-DD (ex: 2026-04-15)"
+            )
+
+    formatos = []
+    if gerar_csv:
+        formatos.append("csv")
+    if gerar_pdf:
+        formatos.append("pdf")
+
+    if not formatos:
+        raise HTTPException(
+            status_code=400,
+            detail="Selecione pelo menos um formato (gerar_csv ou gerar_pdf)"
+        )
+
+    try:
+        resultado = gerar_lote_qrcodes(
+            quantidade=quantidade,
+            secret_key=SECRET_KEY,
+            data_criacao=data_criacao,
+            formatos=formatos
+        )
+
         terminal = getattr(current_user, 'terminal', None)
-        
+
         registrar_log(
             db=db,
             usuario=current_user,
@@ -156,24 +133,23 @@ def gerar_lote(
                 "inicio": resultado["inicio"],
                 "fim": resultado["fim"],
                 "data_criacao": resultado["data_criacao"],
-                "formatos": dados.formatos,
+                "formatos": formatos,
                 "terminal": terminal
             },
             ip_address=request.client.host if request.client else None
         )
         db.commit()
-        
-        # Montar links de download
+
         links_download = {}
-        
+
         if resultado["arquivos"]["csv"]:
             filename = os.path.basename(resultado["arquivos"]["csv"])
             links_download["csv"] = f"/api/admin/qrcodes/download/csv/{filename}"
-        
+
         if resultado["arquivos"]["pdf"]:
             filename = os.path.basename(resultado["arquivos"]["pdf"])
             links_download["pdf"] = f"/api/admin/qrcodes/download/pdf/{filename}"
-        
+
         return {
             "sucesso": True,
             "mensagem": f"Lote de {resultado['quantidade']} QR Codes gerado com sucesso",
@@ -185,7 +161,7 @@ def gerar_lote(
             "proximo_id": resultado["fim"] + 1,
             "proximo_formato": f"BAG-{resultado['fim'] + 1:05d}"
         }
-        
+
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -206,33 +182,25 @@ def download_arquivo(
 ):
     """
     Faz download de arquivo CSV ou PDF gerado.
-    
-    **PARÂMETROS:**
+
+    **Permissão:** Admin ou Gerente
+
+    **Parâmetros:**
     - tipo: "csv" ou "pdf"
     - filename: Nome do arquivo
-    
-    **AUTENTICAÇÃO:**
-    - Admin e gerente podem baixar
-    
-    **RETORNA:**
-    - Arquivo para download
     """
-    # Validar tipo
+
     if tipo not in ["csv", "pdf"]:
         raise HTTPException(status_code=400, detail="Tipo inválido. Use 'csv' ou 'pdf'")
-    
-    # Validar filename (segurança: evitar path traversal)
+
     if ".." in filename or "/" in filename or "\\" in filename:
         raise HTTPException(status_code=400, detail="Nome de arquivo inválido")
-    
-    # Construir caminho
+
     file_path = os.path.join(STORAGE_DIR, tipo, filename)
-    
-    # Verificar se existe
+
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="Arquivo não encontrado")
-    
-    # Retornar arquivo
+
     return FileResponse(
         path=file_path,
         filename=filename,
@@ -250,46 +218,43 @@ def historico_lotes(
 ):
     """
     Retorna histórico de lotes de QR Codes gerados.
-    
-    **INFORMAÇÕES:**
+
+    **Permissão:** Admin ou Gerente
+
+    **Informações:**
     - Baseado nos logs de auditoria
     - Mostra quem gerou, quando e quantos
-    
-    **QUANDO USAR:**
-    - Auditoria de geração
-    - Rastreamento de lotes
-    - Análise de uso
     """
+
     logs = db.query(models.LogAuditoria).filter(
         models.LogAuditoria.acao == "gerar_qrcodes"
     ).order_by(
-        models.LogAuditoria.data_hora.desc()
+        models.LogAuditoria.timestamp.desc()
     ).limit(50).all()
-    
+
     historico = []
-    
+
     for log in logs:
-        import json
         detalhes = json.loads(log.detalhes) if log.detalhes else {}
-        
+
         usuario_info = db.query(models.Usuario).filter(
             models.Usuario.id == log.usuario_id
         ).first()
-        
+
         historico.append({
-            "data_hora": log.data_hora,
+            "data_hora": log.timestamp,
             "usuario": {
-                "username": log.usuario_username,
+                "username": log.usuario.username if log.usuario else "sistema",
                 "nome": usuario_info.nome if usuario_info else None
             },
             "quantidade": detalhes.get("quantidade"),
-            "intervalo": log.entidade_id,
+            "intervalo": detalhes.get("inicio"),
             "data_criacao": detalhes.get("data_criacao"),
             "formatos": detalhes.get("formatos"),
             "terminal": detalhes.get("terminal"),
-            "ip": log.ip_address
+            "ip": log.ip
         })
-    
+
     return {
         "total": len(historico),
         "lotes": historico
