@@ -522,11 +522,23 @@ def registrar_uso(
             detail="Sacola atingiu limite máximo de 40 utilizações. Devolva a sacola."
         )
 
+    # Registrar em RegistroUso (legado)
     registro = models.RegistroUso(
         sacola_id=sacola_id,
         valor_compra=valor_float
     )
     db.add(registro)
+
+    # Registrar em UsoSacola (multi-tenant)
+    uso_sacola = models.UsoSacola(
+        sacola_id=sacola_id,
+        entidade_id=current_user.entidade_id,
+        unidade_id=current_user.unidade_id,
+        usuario_id=current_user.id,
+        valor_compra=valor_float,
+        data_hora=datetime.now()
+    )
+    db.add(uso_sacola)
 
     sacola.utilizacoes += 1
     sacola.ultima_utilizacao = datetime.now()
