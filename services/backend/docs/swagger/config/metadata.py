@@ -19,7 +19,7 @@ A API Bag+ fornece um ecossistema completo para operações de balcão e gestão
 *   **Comunicação:** Sistema de notificações push e broadcast para engajamento.
 
 ---
-**Suporte Técnico:** [jean06soares@gmail.com](mailto:jean06soares@gmail.com) | **Total:** 69 endpoints operacionais.
+**Suporte Técnico:** [jean06soares@gmail.com](mailto:jean06soares@gmail.com) | **Total:** 71 endpoints operacionais.
 """
 
 CONTACT = {
@@ -67,7 +67,7 @@ TAGS_METADATA = [
     },
     {
         "name": "Admin - Relatórios",
-        "description": "**Dashboard e Analytics** - Relatórios de vendas, estatísticas, crescimento MoM | *Requer: Admin ou Gerente*"
+        "description": "**Dashboard e Analytics** - Relatórios de vendas, estatísticas, crescimento MoM, vendas por unidade e por entidade | *Requer: Admin ou Gerente*"
     },
     {
         "name": "Admin - Sacolas",
