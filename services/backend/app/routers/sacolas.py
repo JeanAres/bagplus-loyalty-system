@@ -47,7 +47,6 @@ def calcular_estado_sacola(utilizacoes: int, dias_uso: int):
     ranking = ["verde", "amarelo", "vermelho", "expirado"]
     descontos = {"verde": 40.00, "amarelo": 20.00, "vermelho": 10.00, "expirado": 0.00}
 
-    # Estado por usos
     if utilizacoes <= 15:
         estado_uso = "verde"
     elif utilizacoes <= 25:
@@ -57,7 +56,6 @@ def calcular_estado_sacola(utilizacoes: int, dias_uso: int):
     else:
         estado_uso = "expirado"
 
-    # Estado por dias
     if dias_uso <= 60:
         estado_dias = "verde"
     elif dias_uso <= 80:
@@ -67,7 +65,6 @@ def calcular_estado_sacola(utilizacoes: int, dias_uso: int):
     else:
         estado_dias = "expirado"
 
-    # O mais restritivo vence
     estado = ranking[max(ranking.index(estado_uso), ranking.index(estado_dias))]
     desconto = descontos[estado]
 
@@ -92,11 +89,6 @@ def listar_sacolas_ativas(db: Session = Depends(get_db)):
     - Cliente vinculado
     - Número de utilizações
     - Data da última utilização
-
-    **Quando usar:**
-    - Dashboard administrativo
-    - Relatórios de uso
-    - Monitoramento geral
 
     **Observação:** Lista ordenada por última utilização (mais recentes primeiro)
     """
@@ -136,13 +128,6 @@ def buscar_sacola(sacola_id: str, db: Session = Depends(get_db)):
     """
     Retorna todas as informações de uma sacola específica.
 
-    **Informações retornadas:**
-    - Dados básicos (ID, status, utilizações)
-    - Cliente vinculado (se houver)
-    - Descontos disponíveis (fidelidade e devolução)
-    - Estado da sacola (verde/amarelo/vermelho)
-    - Tempo desde última utilização
-
     **Quando usar:**
     - Sistema de caixa ao escanear QR Code
     - Consulta de status de sacola
@@ -158,29 +143,21 @@ def buscar_sacola(sacola_id: str, db: Session = Depends(get_db)):
     if not sacola:
         raise HTTPException(status_code=404, detail="Sacola não encontrada")
 
-    # Cliente vinculado
     cliente_info = None
     if sacola.cliente_cpf:
         cliente = db.query(models.Cliente).filter(models.Cliente.cpf == sacola.cliente_cpf).first()
         if cliente:
-            cliente_info = {
-                "cpf": cliente.cpf,
-                "nome": cliente.nome
-            }
+            cliente_info = {"cpf": cliente.cpf, "nome": cliente.nome}
 
-    # Calcular desconto por fidelidade
     fidelidade = calcular_desconto_fidelidade(sacola.utilizacoes)
 
-    # Calcular dias de uso
     if sacola.data_vinculacao:
         dias_uso = (datetime.now() - sacola.data_vinculacao).days
     else:
         dias_uso = 0
 
-    # Calcular estado e desconto de devolução
     estado, desconto_devolucao = calcular_estado_sacola(sacola.utilizacoes, dias_uso)
 
-    # Tempo desde última utilização
     tempo_ultima_utilizacao = None
     if sacola.ultima_utilizacao:
         delta = datetime.now() - sacola.ultima_utilizacao
@@ -213,16 +190,8 @@ def ativar_sacola(qr_code: str, cpf_cliente: str, db: Session = Depends(get_db))
 
     **Uso principal:** Sistema de caixa com leitora de QR Code (pistolinha)
 
-    **Validações aplicadas:**
-    -  QR Code deve ter formato válido (BAG-00001:2026-03-31:checksum)
-    -  Checksum SHA256 deve ser válido (anti-falsificação)
-    -  Sacola deve existir no sistema (lote importado)
-    -  Sacola deve estar em status "estoque"
-    -  Cliente deve existir e estar ativo
-    -  Cliente não pode estar suspenso
-
     **Parâmetros:**
-    - qr_code: QR Code completo lido pela pistolinha
+    - qr_code: QR Code completo lido pela pistolinha (ex: BAG-00001:2026-03-31:checksum)
     - cpf_cliente: CPF do cliente (11 dígitos)
 
     **Observação:** Para vincular múltiplas sacolas de uma vez (testes), use /ativar-lote
@@ -289,14 +258,8 @@ def ativar_sacola(qr_code: str, cpf_cliente: str, db: Session = Depends(get_db))
     return {
         "sucesso": True,
         "mensagem": f"Sacola {sacola_id} ativada com sucesso",
-        "sacola": {
-            "id": sacola.id,
-            "status": sacola.status.value
-        },
-        "cliente": {
-            "cpf": cliente.cpf,
-            "nome": cliente.nome
-        }
+        "sacola": {"id": sacola.id, "status": sacola.status.value},
+        "cliente": {"cpf": cliente.cpf, "nome": cliente.nome}
     }
 
 
@@ -317,26 +280,9 @@ def ativar_sacolas_lote(
     - Produção: use /ativar com pistolinha (uma por uma)
     - Testes: facilita vincular várias sacolas rapidamente
 
-    **Comportamento:**
-    - Valida TODAS as sacolas (mesmo processo do /ativar)
-    - Vincula as que estão válidas
-    - Retorna lista de sucessos e erros
-    - Se uma falhar, outras continuam (não é tudo-ou-nada)
-
     **Parâmetros:**
     - qr_codes: Array de QR Codes completos
     - cpf_cliente: CPF do cliente
-
-    **Exemplo de uso:**
-    json
-    {
-      "qr_codes": [
-        "BAG-00001:2026-03-31:abc123",
-        "BAG-00002:2026-03-31:def456",
-        "BAG-00003:2026-03-31:ghi789"
-      ],
-      "cpf_cliente": "12345678900"
-    }
     """
 
     cliente = db.query(models.Cliente).filter(models.Cliente.cpf == cpf_cliente).first()
@@ -373,15 +319,12 @@ def ativar_sacolas_lote(
             if not sacola:
                 erros.append({
                     "qr_code": qr_code,
-                    "erro": f"Sacola {sacola_id} não encontrada no sistema. Verifique se o lote foi importado."
+                    "erro": f"Sacola {sacola_id} não encontrada no sistema."
                 })
                 continue
 
             if sacola.checksum != qr_code.split(':')[2]:
-                erros.append({
-                    "qr_code": qr_code,
-                    "erro": "Checksum não confere com registro do banco. QR Code pode estar adulterado."
-                })
+                erros.append({"qr_code": qr_code, "erro": "Checksum não confere com registro do banco."})
                 continue
 
             if sacola.status != models.StatusSacola.estoque:
@@ -391,11 +334,11 @@ def ativar_sacolas_lote(
                     ).first()
                     erros.append({
                         "qr_code": qr_code,
-                        "erro": f"Sacola já está vinculada ao cliente {cliente_atual.nome} (CPF: {cliente_atual.cpf})"
+                        "erro": f"Sacola já vinculada ao cliente {cliente_atual.nome} (CPF: {cliente_atual.cpf})"
                     })
                     continue
                 elif sacola.status == models.StatusSacola.devolvido:
-                    erros.append({"qr_code": qr_code, "erro": "Sacola já foi devolvida e não pode ser reativada"})
+                    erros.append({"qr_code": qr_code, "erro": "Sacola já foi devolvida."})
                     continue
 
             sacola.status = models.StatusSacola.ativo
@@ -449,7 +392,7 @@ def ativar_sacolas_lote(
     summary="Registrar uso da sacola",
 )
 def registrar_uso(
-    sacola_id: str,
+    qr_code: str,
     valor_compra: str,
     request: Request,
     current_user: models.Usuario = Depends(get_current_user),
@@ -458,29 +401,26 @@ def registrar_uso(
     """
     Registra uma nova utilização da sacola com valor da compra.
 
+    **Parâmetros:**
+    - qr_code: QR Code completo lido pela pistolinha (ex: BAG-00001:2026-03-31:checksum)
+    - valor_compra: Valor da compra (aceita vírgula ou ponto, ex: 125,50)
+
     **Validações aplicadas:**
-    -  Sacola deve existir
+    -  QR Code deve ser válido
     -  Sacola deve estar ativa (vinculada a cliente)
     -  Intervalo mínimo de 4 horas desde último uso
     -  Valor mínimo de R$ 15,00
     -  Cliente não pode estar suspenso
     -  Máximo 40 utilizações por sacola
 
-    **Detecções automáticas executadas:**
-    -  Valores diferentes no mesmo dia (rancho suspeito)
-    -  Sempre mesmo valor em dias diferentes
-    -  Abuso de valor mínimo (muitas sacolas com R$ 15,00)
-
-    **Notificações automáticas:**
-    -  Marco de fidelidade atingido (10, 20, 30, 40 usos)
-    -  Sacola próxima do limite (35+ usos)
-
-    **Parâmetros:**
-    - sacola_id: ID da sacola (ex: BAG-00001)
-    - valor_compra: Valor da compra (aceita vírgula ou ponto)
-
-    **Observação:** Aceita formatos: 125.50 ou 125,50
+    **Detecções automáticas:** fraudes e padrões suspeitos
+    **Notificações automáticas:** marcos de fidelidade e proximidade do limite
     """
+
+    # Validar QR Code e extrair sacola_id
+    valido, sacola_id, data_criacao, erro = validar_qrcode_checksum(qr_code)
+    if not valido:
+        raise HTTPException(status_code=400, detail=erro)
 
     sacola = db.query(models.Sacola).filter(models.Sacola.id == sacola_id).first()
     if not sacola:
@@ -630,10 +570,6 @@ def devolver_sacola(sacola_id: str, db: Session = Depends(get_db)):
     - 🔴 Vermelho: até 40 usos / até 90 dias  → R$ 10,00
     - ⚫ Expirado: acima dos limites           → R$ 0,00
 
-    **Validações:**
-    - Sacola deve estar ativa
-    - Desconto calculado automaticamente
-
     **Parâmetro:**
     - sacola_id: ID da sacola (ex: BAG-00001)
 
@@ -685,17 +621,6 @@ def historico_uso(sacola_id: str, db: Session = Depends(get_db)):
     """
     Retorna histórico completo de utilizações de uma sacola.
 
-    **Informações retornadas:**
-    - Lista de todos os usos com data e valor
-    - Total gasto usando esta sacola
-    - Valor médio por compra
-    - Data da primeira e última utilização
-
-    **Quando usar:**
-    - Auditoria de uso
-    - Análise de padrão de compras
-    - Suporte ao cliente
-
     **Observação:** Histórico ordenado da mais recente para mais antiga
     """
 
@@ -736,15 +661,6 @@ def historico_uso(sacola_id: str, db: Session = Depends(get_db)):
 def verificar_qr_code(qr_code: str, db: Session = Depends(get_db)):
     """
     Valida o QR Code sem vincular a sacola ao cliente.
-
-    **Quando usar:**
-    - Verificar se QR Code é válido antes de ativar
-    - Testar integridade de QR Codes impressos
-    - Auditoria de segurança
-
-    **Validações:**
-    - Formato do QR Code
-    - Checksum SHA256
 
     **Parâmetro:**
     - qr_code: QR Code completo (BAG-00001:2026-03-31:checksum)
