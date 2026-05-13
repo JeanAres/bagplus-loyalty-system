@@ -427,7 +427,7 @@ Authorization: Bearer eyJ...
 Content-Type: application/json
 
 {
-  "sacola_id": "BAG-00001",
+  "qr_code": "BAG-00001:2026-05-13:a1b2c3",
   "valor_compra": "125,50"
 }
 ```
@@ -796,9 +796,8 @@ GET /api/admin/qrcodes/download/pdf/lote_00001-00100_IMPRESSAO.pdf
 POST /api/admin/lotes/importar
 Authorization: Bearer {token}
 
+lote_codigo: lote_00001-00100
 data_fabricacao: 2026-03-31
-inicio: 1
-fim: 100
 ```
 
 ---
@@ -937,8 +936,8 @@ Este é um projeto comercial proprietário. O código está disponível para ava
 ---
 
 **Versão:** v0.94-beta  
-**Endpoints:** 69 operacionais  
+**Endpoints:** 71 operacionais  
 **Tabelas:** 14  
-**Atualizado:** 29/04/2026  
+**Atualizado:** 13/05/2026
 **Arquitetura:** SaaS Multi-Tenant + Modular Monorepo + Docker  
 **Status:** 🟢 Produção Online (AWS São Paulo)
