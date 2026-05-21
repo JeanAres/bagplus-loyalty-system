@@ -30,7 +30,7 @@ const getBaseUrl = (): string => {
 };
 
 const getToken = (): string | null => {
-  return localStorage.getItem(TOKEN_KEY);
+  return sessionStorage.getItem(TOKEN_KEY);
 };
 
 async function request<T>(
@@ -75,10 +75,8 @@ export async function login(
   params.append('password', password);
   if (terminal) params.append('terminal', terminal);
 
-  const response = await fetch(`${getBaseUrl()}/api/auth/login`, {
+  const response = await fetch(`${getBaseUrl()}/api/auth/login?${params.toString()}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: params.toString(),
   });
 
   if (!response.ok) {
