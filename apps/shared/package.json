@@ -11,5 +11,11 @@
     "./utils": "./utils/index.ts",
     "./hooks": "./hooks/index.ts",
     "./components": "./components/index.ts"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.0.0"
   }
 }
