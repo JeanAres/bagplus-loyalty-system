@@ -19,7 +19,18 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
+
+    /* Path aliases */
+    "baseUrl": ".",
+    "paths": {
+      "@bagplus/shared": ["../shared/index.ts"],
+      "@bagplus/shared/api": ["../shared/api/index.ts"],
+      "@bagplus/shared/types": ["../shared/types/index.ts"],
+      "@bagplus/shared/utils": ["../shared/utils/index.ts"],
+      "@bagplus/shared/hooks": ["../shared/hooks/index.ts"],
+      "@bagplus/shared/components": ["../shared/components/index.ts"]
+    }
   },
   "include": ["src"]
 }

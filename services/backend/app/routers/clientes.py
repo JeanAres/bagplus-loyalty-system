@@ -20,7 +20,7 @@ router = APIRouter(
     summary="Cadastrar novo cliente",
     dependencies=[Depends(require_role(["caixa", "gerente", "admin"]))]
 )
-def criar_cliente(cpf: str, nome: str, db: Session = Depends(get_db)):
+def criar_cliente(cpf: str, nome: str, telefone: str = None, db: Session = Depends(get_db)):
     """
     Cadastra um novo cliente no programa de fidelidade Bag+.
     
@@ -32,6 +32,7 @@ def criar_cliente(cpf: str, nome: str, db: Session = Depends(get_db)):
     - CPF deve ter exatamente 11 dígitos (aceita formatação)
     - Nome deve ter no mínimo 3 caracteres
     - CPF não pode estar duplicado no sistema
+    - Telefone: 10 dígitos (fixo) ou 11 dígitos (celular)
     
     **Observação:** Aceita CPF com ou sem formatação (123.456.789-00 ou 12345678900)
     """
@@ -42,13 +43,24 @@ def criar_cliente(cpf: str, nome: str, db: Session = Depends(get_db)):
     # Validar e sanitizar nome
     nome_validado = validar_nome(nome)
     
+    # Validar e sanitizar telefone
+    telefone_validado = None
+    if telefone:
+        telefone_limpo = ''.join(filter(str.isdigit, telefone))
+        if len(telefone_limpo) not in (10, 11):
+            raise HTTPException(
+                status_code=400,
+                detail="Telefone inválido. Use 10 dígitos (fixo) ou 11 dígitos (celular)"
+            )
+        telefone_validado = telefone_limpo
+    
     # Verificar se cliente já existe
     cliente_existente = db.query(models.Cliente).filter(models.Cliente.cpf == cpf_validado).first()
     if cliente_existente:
         raise HTTPException(status_code=400, detail="Cliente já cadastrado")
     
     # Criar cliente
-    cliente = models.Cliente(cpf=cpf_validado, nome=nome_validado)
+    cliente = models.Cliente(cpf=cpf_validado, nome=nome_validado, telefone=telefone_validado)
     db.add(cliente)
     db.commit()
     db.refresh(cliente)
@@ -59,10 +71,10 @@ def criar_cliente(cpf: str, nome: str, db: Session = Depends(get_db)):
         "cliente": {
             "cpf": cliente.cpf,
             "nome": cliente.nome,
+            "telefone": cliente.telefone,
             "data_cadastro": cliente.data_cadastro
         }
     }
-
 
 @router.get(
     "/",
@@ -93,6 +105,7 @@ def listar_clientes(db: Session = Depends(get_db)):
         clientes_data.append({
             "cpf": cliente.cpf,
             "nome": cliente.nome,
+            "telefone": cliente.telefone,
             "data_cadastro": cliente.data_cadastro,
             "sacolas_ativas": sacolas_ativas,
             "status_beneficios": cliente.status_beneficios.value

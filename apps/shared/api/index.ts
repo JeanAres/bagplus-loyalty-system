@@ -123,11 +123,14 @@ export async function cadastrarCliente(
     throw new Error(error.detail || 'Erro ao cadastrar cliente');
   }
 
-  return response.json();
+  const data = await response.json();
+  return data.cliente || data;
 }
 
 export async function verificarCpf(cpf: string): Promise<{ existe: boolean; ativo: boolean }> {
-  return request(`/api/clientes/verificar-cpf?cpf=${cpf}`);
+  return request(`/api/clientes/validar-cpf?cpf=${cpf}`, {
+    method: 'POST',
+  });
 }
 
 // ============================================
