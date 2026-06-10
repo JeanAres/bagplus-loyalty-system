@@ -625,6 +625,78 @@ def validar_cpf_endpoint(cpf: str):
             "mensagem": "CPF inválido (dígitos verificadores incorretos)"
         }
 
+@router.put(
+    "/{cpf}",
+    summary="Editar dados do cliente",
+    dependencies=[Depends(require_role(["caixa", "gerente", "admin"]))]
+)
+def editar_cliente(cpf: str, nome: str = None, telefone: str = None, db: Session = Depends(get_db)):
+    """
+    Atualiza nome e/ou telefone de um cliente existente.
+
+    **Quando usar:**
+    - Corrigir nome digitado incorretamente no cadastro
+    - Adicionar ou atualizar telefone do cliente
+    - Atualizar dados após solicitação do cliente
+
+    **Campos editáveis:**
+    - nome: Nome completo (mínimo 3 caracteres)
+    - telefone: Telefone com 10 ou 11 dígitos (opcional)
+
+    **Validações aplicadas:**
+    - Cliente deve existir no sistema
+    - Nome deve ter no mínimo 3 caracteres (se informado)
+    - Telefone: 10 dígitos (fixo) ou 11 dígitos (celular) (se informado)
+
+    **Observação:** Passe apenas os campos que deseja atualizar.
+    Campos não informados permanecem inalterados.
+
+    **Parâmetros:**
+    - cpf: CPF do cliente (11 dígitos)
+    - nome: Novo nome completo (opcional)
+    - telefone: Novo telefone (opcional, envie vazio para remover)
+
+    **Exemplos:**
+
+    PUT /api/clientes/12345678900?nome=João Silva
+    PUT /api/clientes/12345678900?telefone=51999998888
+    PUT /api/clientes/12345678900?nome=João Silva&telefone=51999998888
+
+    **Erros possíveis:**
+    - 404: Cliente não encontrado
+    - 400: Nome inválido ou telefone com formato incorreto
+    """
+
+    cliente = db.query(models.Cliente).filter(models.Cliente.cpf == cpf).first()
+    if not cliente:
+        raise HTTPException(status_code=404, detail="Cliente não encontrado")
+
+    if nome is not None:
+        cliente.nome = validar_nome(nome)
+
+    if telefone is not None:
+        telefone_limpo = ''.join(filter(str.isdigit, telefone))
+        if telefone_limpo and len(telefone_limpo) not in (10, 11):
+            raise HTTPException(
+                status_code=400,
+                detail="Telefone inválido. Use 10 dígitos (fixo) ou 11 dígitos (celular)"
+            )
+        cliente.telefone = telefone_limpo or None
+
+    db.commit()
+    db.refresh(cliente)
+
+    return {
+        "sucesso": True,
+        "mensagem": f"{cliente.nome} foi atualizado(a) com sucesso",
+        "cliente": {
+            "cpf": cliente.cpf,
+            "nome": cliente.nome,
+            "telefone": cliente.telefone,
+            "data_cadastro": cliente.data_cadastro
+        }
+    }
+
 @router.delete(
     "/{cpf}",
     summary="Excluir cliente (restritivo)",
