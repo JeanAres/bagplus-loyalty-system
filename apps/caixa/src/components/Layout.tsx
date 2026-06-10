@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import HamburgerButton from './HamburgerButton';
 import {
   ShoppingBag,
   QrCode,
@@ -13,8 +14,6 @@ import {
   LogOut,
   Moon,
   Sun,
-  Menu,
-  X,
   ChevronRight,
   Home,
 } from 'lucide-react';
@@ -95,12 +94,10 @@ export default function Layout({ children }: LayoutProps) {
               <span className="font-bold text-foreground">Bag+ Caixa</span>
             </div>
           )}
-          <button
+          <HamburgerButton
+            isOpen={sidebarOpen}
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
-          >
-            {sidebarOpen ? <X size={18} /> : <Menu size={18} />}
-          </button>
+          />
         </div>
 
         {/* Navigation */}
