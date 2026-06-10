@@ -96,7 +96,16 @@ export async function getMe() {
 // ============================================
 
 export async function buscarCliente(cpf: string): Promise<Cliente> {
-  return request(`/api/clientes/${cpf}`);
+  const data = await request<{ existe: boolean; cliente: Cliente }>(`/api/clientes/${cpf}/validar`);
+  if (!data.existe) throw new Error('Cliente não encontrado');
+  return data.cliente;
+}
+
+export async function buscarClientePorNome(nome: string): Promise<Cliente[]> {
+  const data = await request<{ clientes: Cliente[] }>(
+    `/api/clientes/buscar?nome=${encodeURIComponent(nome)}`
+  );
+  return data.clientes;
 }
 
 export async function cadastrarCliente(

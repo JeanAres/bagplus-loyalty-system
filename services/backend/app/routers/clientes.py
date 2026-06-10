@@ -552,6 +552,8 @@ def validar_cliente(cpf: str, db: Session = Depends(get_db)):
         "cliente": {
             "cpf": cliente.cpf,
             "nome": cliente.nome,
+            "telefone": cliente.telefone,
+            "data_cadastro": cliente.data_cadastro,
             "status_beneficios": cliente.status_beneficios.value,
             "sacolas_ativas": sacolas_ativas,
             "suspenso": cliente.status_beneficios != models.StatusBeneficios.ativo,
