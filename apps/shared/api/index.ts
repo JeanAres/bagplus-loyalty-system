@@ -136,6 +136,21 @@ export async function cadastrarCliente(
   return data.cliente || data;
 }
 
+export async function editarCliente(
+  cpf: string,
+  dados: { nome?: string; telefone?: string }
+): Promise<Cliente> {
+  const params = new URLSearchParams();
+  if (dados.nome) params.append('nome', dados.nome);
+  if (dados.telefone !== undefined) params.append('telefone', dados.telefone);
+
+  const data = await request<{ sucesso: boolean; cliente: Cliente }>(
+    `/api/clientes/${cpf}?${params.toString()}`,
+    { method: 'PUT' }
+  );
+  return data.cliente;
+}
+
 export async function verificarCpf(cpf: string): Promise<{ existe: boolean; ativo: boolean }> {
   return request(`/api/clientes/validar-cpf?cpf=${cpf}`, {
     method: 'POST',

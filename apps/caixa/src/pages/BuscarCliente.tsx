@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { buscarCliente, buscarClientePorNome } from '@bagplus/shared/api';
+import { buscarCliente, buscarClientePorNome, editarCliente } from '@bagplus/shared/api';
 import { formatCPF, cleanCPF, validateCPF, formatDateTime, formatTelefone } from '@bagplus/shared/utils';
 import type { Cliente } from '@bagplus/shared/types';
-import { Search, User, ShoppingBag, Loader2, AlertCircle, CheckCircle, XCircle } from 'lucide-react';
+import { Search, User, ShoppingBag, Loader2, AlertCircle, CheckCircle, XCircle, Pencil, X, Check } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 type BuscaTipo = 'cpf' | 'nome';
@@ -15,6 +15,13 @@ export default function BuscarCliente() {
   const [cliente, setCliente] = useState<Cliente | null>(null);
   const [resultados, setResultados] = useState<Cliente[]>([]);
 
+  // Edição
+  const [editando, setEditando] = useState(false);
+  const [editNome, setEditNome] = useState('');
+  const [editTelefone, setEditTelefone] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+
   const handleCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = cleanCPF(e.target.value);
     if (raw.length <= 11) setTermo(raw);
@@ -25,6 +32,7 @@ export default function BuscarCliente() {
     setError(null);
     setCliente(null);
     setResultados([]);
+    setEditando(false);
 
     if (!termo.trim()) {
       setError('Preencha o campo de busca');
@@ -61,6 +69,7 @@ export default function BuscarCliente() {
   const handleSelecionarCliente = async (cpf: string) => {
     setIsLoading(true);
     setError(null);
+    setEditando(false);
     try {
       const result = await buscarCliente(cpf);
       setCliente(result);
@@ -77,6 +86,38 @@ export default function BuscarCliente() {
     setCliente(null);
     setResultados([]);
     setError(null);
+    setEditando(false);
+  };
+
+  const handleIniciarEdicao = () => {
+    if (!cliente) return;
+    setEditNome(cliente.nome);
+    setEditTelefone(cliente.telefone || '');
+    setEditError(null);
+    setEditando(true);
+  };
+
+  const handleCancelarEdicao = () => {
+    setEditando(false);
+    setEditError(null);
+  };
+
+  const handleSalvarEdicao = async () => {
+    if (!cliente) return;
+    setEditError(null);
+    setIsSaving(true);
+    try {
+      const atualizado = await editarCliente(cliente.cpf, {
+        nome: editNome,
+        telefone: editTelefone,
+      });
+      setCliente({ ...cliente, ...atualizado });
+      setEditando(false);
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : 'Erro ao salvar');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const statusColor = {
@@ -90,6 +131,12 @@ export default function BuscarCliente() {
     suspenso: AlertCircle,
     bloqueado: XCircle,
   };
+
+  const inputClass = cn(
+    'w-full h-10 px-3 rounded-md border bg-input text-foreground placeholder:text-muted-foreground',
+    'focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent',
+    'disabled:opacity-50 transition-colors text-sm'
+  );
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -132,11 +179,7 @@ export default function BuscarCliente() {
             value={buscaTipo === 'cpf' ? formatCPF(termo) : termo}
             onChange={buscaTipo === 'cpf' ? handleCpfChange : (e) => setTermo(e.target.value)}
             disabled={isLoading}
-            className={cn(
-              'w-full h-10 px-3 rounded-md border bg-input text-foreground placeholder:text-muted-foreground',
-              'focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent',
-              'disabled:opacity-50 transition-colors text-sm'
-            )}
+            className={inputClass}
           />
 
           {error && (
@@ -200,6 +243,7 @@ export default function BuscarCliente() {
       {/* Detalhes do cliente */}
       {cliente && (
         <div className="bg-card border border-border rounded-2xl overflow-hidden">
+
           {/* Header */}
           <div className="px-6 py-4 border-b border-border flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -211,44 +255,114 @@ export default function BuscarCliente() {
                 <p className="text-xs text-muted-foreground">{formatCPF(cliente.cpf)}</p>
               </div>
             </div>
-            <div className={cn('flex items-center gap-1.5 text-sm font-medium', statusColor[cliente.status_beneficios])}>
-              {(() => {
-                const Icon = StatusIcon[cliente.status_beneficios];
-                return <Icon size={16} />;
-              })()}
-              {cliente.status_beneficios}
+            <div className="flex items-center gap-2">
+              <div className={cn('flex items-center gap-1.5 text-sm font-medium', statusColor[cliente.status_beneficios])}>
+                {(() => {
+                  const Icon = StatusIcon[cliente.status_beneficios];
+                  return <Icon size={16} />;
+                })()}
+                {cliente.status_beneficios}
+              </div>
+              {!editando && (
+                <button
+                  onClick={handleIniciarEdicao}
+                  className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
+                  title="Editar dados"
+                >
+                  <Pencil size={16} />
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Dados */}
+          {/* Dados / Formulário de edição */}
           <div className="px-6 py-4 space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-secondary rounded-xl p-3">
-                <p className="text-xs text-muted-foreground mb-1">Telefone</p>
-                <p className="text-sm font-medium text-foreground">{formatTelefone(cliente.telefone || '')}</p>
-              </div>
-              <div className="bg-secondary rounded-xl p-3">
-                <p className="text-xs text-muted-foreground mb-1">Cadastro</p>
-                <p className="text-sm font-medium text-foreground">{formatDateTime(cliente.data_cadastro)}</p>
-              </div>
-            </div>
+            {editando ? (
+              <>
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground">Nome completo</label>
+                    <input
+                      type="text"
+                      value={editNome}
+                      onChange={(e) => setEditNome(e.target.value)}
+                      disabled={isSaving}
+                      className={inputClass}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground">Telefone</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={editTelefone}
+                      onChange={(e) => setEditTelefone(e.target.value.replace(/\D/g, ''))}
+                      disabled={isSaving}
+                      placeholder="(00) 00000-0000"
+                      className={inputClass}
+                    />
+                  </div>
+                </div>
 
-            {cliente.status_beneficios !== 'ativo' && cliente.motivo_suspensao && (
-              <div className="px-3 py-2.5 bg-destructive/10 border border-destructive/20 rounded-lg">
-                <p className="text-xs text-destructive font-medium">Motivo: {cliente.motivo_suspensao}</p>
-              </div>
+                {editError && (
+                  <div className="px-3 py-2 bg-destructive/10 border border-destructive/20 rounded-md">
+                    <p className="text-destructive text-xs">{editError}</p>
+                  </div>
+                )}
+
+                <div className="flex gap-2 pt-1">
+                  <button
+                    onClick={handleSalvarEdicao}
+                    disabled={isSaving}
+                    className={cn(
+                      'flex-1 h-9 rounded-md bg-primary text-primary-foreground text-sm font-medium',
+                      'hover:bg-primary/90 transition-colors disabled:opacity-50',
+                      'flex items-center justify-center gap-2'
+                    )}
+                  >
+                    {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                    {isSaving ? 'Salvando...' : 'Salvar'}
+                  </button>
+                  <button
+                    onClick={handleCancelarEdicao}
+                    disabled={isSaving}
+                    className="h-9 px-4 rounded-md bg-secondary text-secondary-foreground text-sm font-medium hover:bg-secondary/80 transition-colors flex items-center gap-1.5"
+                  >
+                    <X size={14} />
+                    Cancelar
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-secondary rounded-xl p-3">
+                    <p className="text-xs text-muted-foreground mb-1">Telefone</p>
+                    <p className="text-sm font-medium text-foreground">{formatTelefone(cliente.telefone || '')}</p>
+                  </div>
+                  <div className="bg-secondary rounded-xl p-3">
+                    <p className="text-xs text-muted-foreground mb-1">Cadastro</p>
+                    <p className="text-sm font-medium text-foreground">{formatDateTime(cliente.data_cadastro)}</p>
+                  </div>
+                </div>
+
+                {cliente.status_beneficios !== 'ativo' && cliente.motivo_suspensao && (
+                  <div className="px-3 py-2.5 bg-destructive/10 border border-destructive/20 rounded-lg">
+                    <p className="text-xs text-destructive font-medium">Motivo: {cliente.motivo_suspensao}</p>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between py-2 border-t border-border">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <ShoppingBag size={16} />
+                    Sacolas ativas
+                  </div>
+                  <span className="text-sm font-semibold text-foreground">
+                    {(cliente as any).sacolas_ativas ?? '—'}
+                  </span>
+                </div>
+              </>
             )}
-
-            {/* Sacolas */}
-            <div className="flex items-center justify-between py-2 border-t border-border">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <ShoppingBag size={16} />
-                Sacolas ativas
-              </div>
-              <span className="text-sm font-semibold text-foreground">
-                {(cliente as any).sacolas_ativas ?? '—'}
-              </span>
-            </div>
           </div>
         </div>
       )}
