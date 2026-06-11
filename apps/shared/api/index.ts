@@ -172,7 +172,9 @@ export async function verificarQrCode(qrCode: string): Promise<{
   status?: string;
   erro?: string;
 }> {
-  return request(`/api/sacolas/verificar-qr?qr_code=${encodeURIComponent(qrCode)}`);
+  return request(`/api/sacolas/verificar-qr?qr_code=${encodeURIComponent(qrCode)}`, {
+    method: 'POST',
+  });
 }
 
 export async function ativarSacola(
