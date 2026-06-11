@@ -436,9 +436,15 @@ def registrar_uso(
         tempo_desde_ultimo = datetime.now() - sacola.ultima_utilizacao
         if tempo_desde_ultimo < timedelta(hours=4):
             horas_restantes = 4 - (tempo_desde_ultimo.total_seconds() / 3600)
+            horas = int(horas_restantes)
+            minutos = int((horas_restantes - horas) * 60)
+            if horas > 0:
+                tempo_msg = f"{horas}h {minutos}min"
+            else:
+                tempo_msg = f"{minutos} minutos"
             raise HTTPException(
                 status_code=400,
-                detail=f"Intervalo mínimo não atingido. Aguarde {horas_restantes:.1f} horas"
+                detail=f"Intervalo mínimo não atingido. Aguarde {tempo_msg}"
             )
 
     valor_float = validar_valor_monetario(valor_compra)

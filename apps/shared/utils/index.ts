@@ -43,7 +43,7 @@ export function formatMoney(value: number): string {
 }
 
 export function parseMoney(value: string): number {
-  return parseFloat(value.replace(',', '.'));
+  return parseFloat(value.replace(/\./g, '').replace(',', '.'));
 }
 
 // ============================================
