@@ -38,7 +38,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // Verifica automaticamente a cada minuto se passou das 18h
   useEffect(() => {
     const interval = setInterval(() => {
-      const stored = localStorage.getItem(THEME_KEY);
       // Só muda automaticamente se não houver preferência manual recente
       // A lógica: se o usuário não tocou no toggle hoje, aplica auto
       const autoKey = 'bagplus_theme_manual';
