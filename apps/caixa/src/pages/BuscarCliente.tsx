@@ -1,11 +1,25 @@
 import { useState } from 'react';
-import { buscarCliente, buscarClientePorNome, editarCliente } from '@bagplus/shared/api';
-import { formatCPF, cleanCPF, validateCPF, formatDateTime, formatTelefone } from '@bagplus/shared/utils';
+import { buscarCliente, buscarClientePorNome, editarCliente, estatisticasCliente, historicoCompletoCliente } from '@bagplus/shared/api';
+import type { EstatisticasCliente, HistoricoCompletoCliente, TimelineEvento } from '@bagplus/shared/api';
+import { formatCPF, cleanCPF, validateCPF, formatDateTime, formatMoney, formatTelefone } from '@bagplus/shared/utils';
 import type { Cliente } from '@bagplus/shared/types';
-import { Search, User, ShoppingBag, Loader2, AlertCircle, CheckCircle, XCircle, Pencil, X, Check } from 'lucide-react';
+import {
+  Search, User, ShoppingBag, Loader2, AlertCircle, CheckCircle, XCircle,
+  Pencil, X, Check, Wallet, Receipt, Clock, ShoppingCart, RotateCcw, FilePlus, Bell
+} from 'lucide-react';
 import { cn } from '../lib/utils';
 
 type BuscaTipo = 'cpf' | 'nome';
+type AbaDetalhe = 'dados' | 'historico';
+
+const timelineIcons: Record<string, React.ElementType> = {
+  cadastro: FilePlus,
+  vinculacao: ShoppingBag,
+  uso: ShoppingCart,
+  devolucao: RotateCcw,
+  alerta: Bell,
+  suspensao: AlertCircle,
+};
 
 export default function BuscarCliente() {
   const [buscaTipo, setBuscaTipo] = useState<BuscaTipo>('cpf');
@@ -14,6 +28,12 @@ export default function BuscarCliente() {
   const [error, setError] = useState<string | null>(null);
   const [cliente, setCliente] = useState<Cliente | null>(null);
   const [resultados, setResultados] = useState<Cliente[]>([]);
+
+  // Abas
+  const [aba, setAba] = useState<AbaDetalhe>('dados');
+  const [estatisticas, setEstatisticas] = useState<EstatisticasCliente | null>(null);
+  const [historico, setHistorico] = useState<HistoricoCompletoCliente | null>(null);
+  const [isLoadingAba, setIsLoadingAba] = useState(false);
 
   // Edição
   const [editando, setEditando] = useState(false);
@@ -27,12 +47,19 @@ export default function BuscarCliente() {
     if (raw.length <= 11) setTermo(raw);
   };
 
+  const resetDetalhes = () => {
+    setAba('dados');
+    setEstatisticas(null);
+    setHistorico(null);
+    setEditando(false);
+  };
+
   const handleBuscar = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setCliente(null);
     setResultados([]);
-    setEditando(false);
+    resetDetalhes();
 
     if (!termo.trim()) {
       setError('Preencha o campo de busca');
@@ -69,7 +96,7 @@ export default function BuscarCliente() {
   const handleSelecionarCliente = async (cpf: string) => {
     setIsLoading(true);
     setError(null);
-    setEditando(false);
+    resetDetalhes();
     try {
       const result = await buscarCliente(cpf);
       setCliente(result);
@@ -86,7 +113,28 @@ export default function BuscarCliente() {
     setCliente(null);
     setResultados([]);
     setError(null);
-    setEditando(false);
+    resetDetalhes();
+  };
+
+  const handleMudarAba = async (novaAba: AbaDetalhe) => {
+    setAba(novaAba);
+    if (!cliente) return;
+
+    if (novaAba === 'historico' && !historico) {
+      setIsLoadingAba(true);
+      try {
+        const [stats, hist] = await Promise.all([
+          estatisticas ? Promise.resolve(estatisticas) : estatisticasCliente(cliente.cpf),
+          historicoCompletoCliente(cliente.cpf),
+        ]);
+        setEstatisticas(stats);
+        setHistorico(hist);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Erro ao carregar histórico');
+      } finally {
+        setIsLoadingAba(false);
+      }
+    }
   };
 
   const handleIniciarEdicao = () => {
@@ -153,7 +201,7 @@ export default function BuscarCliente() {
           </div>
         </div>
 
-        {/* Tabs */}
+        {/* Tabs de busca */}
         <div className="flex gap-2 mb-4">
           {(['cpf', 'nome'] as BuscaTipo[]).map((tipo) => (
             <button
@@ -263,7 +311,7 @@ export default function BuscarCliente() {
                 })()}
                 {cliente.status_beneficios}
               </div>
-              {!editando && (
+              {!editando && aba === 'dados' && (
                 <button
                   onClick={handleIniciarEdicao}
                   className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
@@ -275,93 +323,193 @@ export default function BuscarCliente() {
             </div>
           </div>
 
-          {/* Dados / Formulário de edição */}
+          {/* Abas */}
+          <div className="flex border-b border-border px-6">
+            {(['dados', 'historico'] as AbaDetalhe[]).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => handleMudarAba(tab)}
+                className={cn(
+                  'px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px',
+                  aba === tab
+                    ? 'border-primary text-foreground'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                )}
+              >
+                {tab === 'dados' ? 'Dados' : 'Histórico'}
+              </button>
+            ))}
+          </div>
+
+          {/* Conteúdo */}
           <div className="px-6 py-4 space-y-3">
-            {editando ? (
-              <>
-                <div className="space-y-3">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted-foreground">Nome completo</label>
-                    <input
-                      type="text"
-                      value={editNome}
-                      onChange={(e) => setEditNome(e.target.value)}
-                      disabled={isSaving}
-                      className={inputClass}
-                    />
+
+            {/* Aba Dados */}
+            {aba === 'dados' && (
+              editando ? (
+                <>
+                  <div className="space-y-3">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-muted-foreground">Nome completo</label>
+                      <input
+                        type="text"
+                        value={editNome}
+                        onChange={(e) => setEditNome(e.target.value)}
+                        disabled={isSaving}
+                        className={inputClass}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-muted-foreground">Telefone</label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={editTelefone}
+                        onChange={(e) => setEditTelefone(e.target.value.replace(/\D/g, ''))}
+                        disabled={isSaving}
+                        placeholder="(00) 00000-0000"
+                        className={inputClass}
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted-foreground">Telefone</label>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={editTelefone}
-                      onChange={(e) => setEditTelefone(e.target.value.replace(/\D/g, ''))}
+
+                  {editError && (
+                    <div className="px-3 py-2 bg-destructive/10 border border-destructive/20 rounded-md">
+                      <p className="text-destructive text-xs">{editError}</p>
+                    </div>
+                  )}
+
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      onClick={handleSalvarEdicao}
                       disabled={isSaving}
-                      placeholder="(00) 00000-0000"
-                      className={inputClass}
-                    />
+                      className={cn(
+                        'flex-1 h-9 rounded-md bg-primary text-primary-foreground text-sm font-medium',
+                        'hover:bg-primary/90 transition-colors disabled:opacity-50',
+                        'flex items-center justify-center gap-2'
+                      )}
+                    >
+                      {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                      {isSaving ? 'Salvando...' : 'Salvar'}
+                    </button>
+                    <button
+                      onClick={handleCancelarEdicao}
+                      disabled={isSaving}
+                      className="h-9 px-4 rounded-md bg-secondary text-secondary-foreground text-sm font-medium hover:bg-secondary/80 transition-colors flex items-center gap-1.5"
+                    >
+                      <X size={14} />
+                      Cancelar
+                    </button>
                   </div>
+                </>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-secondary rounded-xl p-3">
+                      <p className="text-xs text-muted-foreground mb-1">Telefone</p>
+                      <p className="text-sm font-medium text-foreground">{formatTelefone(cliente.telefone || '')}</p>
+                    </div>
+                    <div className="bg-secondary rounded-xl p-3">
+                      <p className="text-xs text-muted-foreground mb-1">Cadastro</p>
+                      <p className="text-sm font-medium text-foreground">{formatDateTime(cliente.data_cadastro)}</p>
+                    </div>
+                  </div>
+
+                  {cliente.status_beneficios !== 'ativo' && cliente.motivo_suspensao && (
+                    <div className="px-3 py-2.5 bg-destructive/10 border border-destructive/20 rounded-lg">
+                      <p className="text-xs text-destructive font-medium">Motivo: {cliente.motivo_suspensao}</p>
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between py-2 border-t border-border">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <ShoppingBag size={16} />
+                      Sacolas ativas
+                    </div>
+                    <span className="text-sm font-semibold text-foreground">
+                      {(cliente as any).sacolas_ativas ?? '—'}
+                    </span>
+                  </div>
+                </>
+              )
+            )}
+
+            {/* Aba Histórico */}
+            {aba === 'historico' && (
+              isLoadingAba ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 size={24} className="animate-spin text-muted-foreground" />
                 </div>
-
-                {editError && (
-                  <div className="px-3 py-2 bg-destructive/10 border border-destructive/20 rounded-md">
-                    <p className="text-destructive text-xs">{editError}</p>
+              ) : historico && estatisticas ? (
+                <div className="space-y-4">
+                  {/* Estatísticas */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-secondary rounded-xl p-3 flex items-center gap-2">
+                      <Wallet size={16} className="text-muted-foreground flex-shrink-0" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Total gasto</p>
+                        <p className="text-sm font-semibold text-foreground">{formatMoney(estatisticas.estatisticas.total_gasto)}</p>
+                      </div>
+                    </div>
+                    <div className="bg-secondary rounded-xl p-3 flex items-center gap-2">
+                      <Receipt size={16} className="text-muted-foreground flex-shrink-0" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Valor médio</p>
+                        <p className="text-sm font-semibold text-foreground">{formatMoney(estatisticas.estatisticas.valor_medio_compra)}</p>
+                      </div>
+                    </div>
                   </div>
-                )}
 
-                <div className="flex gap-2 pt-1">
-                  <button
-                    onClick={handleSalvarEdicao}
-                    disabled={isSaving}
-                    className={cn(
-                      'flex-1 h-9 rounded-md bg-primary text-primary-foreground text-sm font-medium',
-                      'hover:bg-primary/90 transition-colors disabled:opacity-50',
-                      'flex items-center justify-center gap-2'
+                  <div className="grid grid-cols-3 gap-3 text-center">
+                    <div className="bg-secondary rounded-xl p-2">
+                      <p className="text-xs text-muted-foreground">Total usos</p>
+                      <p className="text-sm font-semibold text-foreground">{estatisticas.estatisticas.total_usos}</p>
+                    </div>
+                    <div className="bg-secondary rounded-xl p-2">
+                      <p className="text-xs text-muted-foreground">Sacolas ativas</p>
+                      <p className="text-sm font-semibold text-foreground">{historico.sacolas.ativas}</p>
+                    </div>
+                    <div className="bg-secondary rounded-xl p-2">
+                      <p className="text-xs text-muted-foreground">Devolvidas</p>
+                      <p className="text-sm font-semibold text-foreground">{historico.sacolas.devolvidas}</p>
+                    </div>
+                  </div>
+
+                  {/* Timeline */}
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                      Linha do tempo
+                    </p>
+                    {historico.timeline.length === 0 ? (
+                      <p className="text-sm text-muted-foreground py-4 text-center">Nenhum evento registrado</p>
+                    ) : (
+                      <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+                        {historico.timeline.map((evento: TimelineEvento, idx: number) => {
+                          const Icon = timelineIcons[evento.tipo] || Clock;
+                          return (
+                            <div key={idx} className="flex items-start gap-3">
+                              <div className="w-7 h-7 bg-secondary rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <Icon size={13} className="text-muted-foreground" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm text-foreground">{evento.descricao}</p>
+                                <p className="text-xs text-muted-foreground">{formatDateTime(evento.data)}</p>
+                              </div>
+                              {evento.valor !== undefined && (
+                                <span className="text-sm font-medium text-foreground flex-shrink-0">
+                                  {formatMoney(evento.valor)}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
                     )}
-                  >
-                    {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-                    {isSaving ? 'Salvando...' : 'Salvar'}
-                  </button>
-                  <button
-                    onClick={handleCancelarEdicao}
-                    disabled={isSaving}
-                    className="h-9 px-4 rounded-md bg-secondary text-secondary-foreground text-sm font-medium hover:bg-secondary/80 transition-colors flex items-center gap-1.5"
-                  >
-                    <X size={14} />
-                    Cancelar
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-secondary rounded-xl p-3">
-                    <p className="text-xs text-muted-foreground mb-1">Telefone</p>
-                    <p className="text-sm font-medium text-foreground">{formatTelefone(cliente.telefone || '')}</p>
-                  </div>
-                  <div className="bg-secondary rounded-xl p-3">
-                    <p className="text-xs text-muted-foreground mb-1">Cadastro</p>
-                    <p className="text-sm font-medium text-foreground">{formatDateTime(cliente.data_cadastro)}</p>
                   </div>
                 </div>
-
-                {cliente.status_beneficios !== 'ativo' && cliente.motivo_suspensao && (
-                  <div className="px-3 py-2.5 bg-destructive/10 border border-destructive/20 rounded-lg">
-                    <p className="text-xs text-destructive font-medium">Motivo: {cliente.motivo_suspensao}</p>
-                  </div>
-                )}
-
-                <div className="flex items-center justify-between py-2 border-t border-border">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <ShoppingBag size={16} />
-                    Sacolas ativas
-                  </div>
-                  <span className="text-sm font-semibold text-foreground">
-                    {(cliente as any).sacolas_ativas ?? '—'}
-                  </span>
-                </div>
-              </>
+              ) : (
+                <p className="text-sm text-muted-foreground py-4 text-center">Erro ao carregar histórico</p>
+              )
             )}
           </div>
         </div>
