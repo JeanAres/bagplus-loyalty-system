@@ -157,6 +157,62 @@ export async function verificarCpf(cpf: string): Promise<{ existe: boolean; ativ
   });
 }
 
+export interface EstatisticasCliente {
+  cliente: { cpf: string; nome: string };
+  estatisticas: {
+    total_gasto: number;
+    valor_medio_compra: number;
+    total_usos: number;
+    sacolas_ativas: number;
+  };
+}
+
+export async function estatisticasCliente(cpf: string): Promise<EstatisticasCliente> {
+  return request(`/api/clientes/${cpf}/estatisticas`);
+}
+
+export interface TimelineEvento {
+  tipo: string;
+  data: string;
+  descricao: string;
+  valor?: number;
+  gravidade?: string;
+}
+
+export interface HistoricoCompletoCliente {
+  cliente: {
+    cpf: string;
+    nome: string;
+    data_cadastro: string;
+    status_beneficios: string;
+    motivo_suspensao: string | null;
+    data_suspensao: string | null;
+  };
+  resumo_compras: {
+    total_gasto: number;
+    valor_medio_compra: number;
+    total_usos: number;
+    primeira_compra: string | null;
+    ultima_compra: string | null;
+  };
+  sacolas: {
+    total_sacolas_vinculadas: number;
+    ativas: number;
+    devolvidas: number;
+    lista_ativas: string[];
+    lista_devolvidas: string[];
+  };
+  alertas: {
+    total: number;
+    lista: any[];
+  };
+  timeline: TimelineEvento[];
+}
+
+export async function historicoCompletoCliente(cpf: string): Promise<HistoricoCompletoCliente> {
+  return request(`/api/clientes/${cpf}/historico-completo`);
+}
+
 // ============================================
 // SACOLAS
 // ============================================
@@ -220,4 +276,16 @@ export async function devolverSacola(sacolaId: string): Promise<{
   return request(`/api/sacolas/devolver?sacola_id=${sacolaId}`, {
     method: 'POST',
   });
+}
+
+export interface HistoricoUsoSacola {
+  sacola_id: string;
+  total_usos: number;
+  total_gasto: number;
+  valor_medio: number;
+  historico: { data_uso: string; valor_compra: number }[];
+}
+
+export async function historicoSacola(sacolaId: string): Promise<HistoricoUsoSacola> {
+  return request(`/api/sacolas/${sacolaId}/historico`);
 }
