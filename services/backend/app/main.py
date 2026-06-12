@@ -21,7 +21,7 @@ from app.core.rate_limiter import limiter
 from app.middleware.security_headers import SecurityHeadersMiddleware
 
 # Routers
-from app.routers import clientes, sacolas, auth, notificacoes
+from app.routers import clientes, sacolas, auth, notificacoes, auditoria_caixa
 from app.routers.admin import (
     lotes, suspensao, alertas, relatorios,
     sacolas as admin_sacolas, exportar, usuarios,
@@ -114,6 +114,7 @@ app.include_router(clientes.router)
 app.include_router(sacolas.router)
 app.include_router(auth.router)
 app.include_router(notificacoes.router)
+app.include_router(auditoria_caixa.router)
 
 # Incluir routers admin
 app.include_router(lotes.router)

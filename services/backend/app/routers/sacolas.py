@@ -184,7 +184,13 @@ def buscar_sacola(sacola_id: str, db: Session = Depends(get_db)):
     summary="Ativar sacola (individual)",
     dependencies=[Depends(require_role(["caixa", "gerente", "admin"]))]
 )
-def ativar_sacola(qr_code: str, cpf_cliente: str, db: Session = Depends(get_db)):
+def ativar_sacola(
+    qr_code: str,
+    cpf_cliente: str,
+    request: Request,
+    current_user: models.Usuario = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     """
     Vincula uma sacola a um cliente através do QR Code.
 
@@ -254,6 +260,26 @@ def ativar_sacola(qr_code: str, cpf_cliente: str, db: Session = Depends(get_db))
 
     db.commit()
     db.refresh(sacola)
+
+    # ========== LOG DE AUDITORIA ==========
+    try:
+        registrar_log(
+            db=db,
+            usuario=current_user,
+            acao="ativar_sacola",
+            entidade_tipo="Sacola",
+            entidade_id=sacola_id,
+            detalhes={
+                "sacola_id": sacola_id,
+                "cliente_cpf": cpf_cliente,
+                "cliente_nome": cliente.nome,
+                "terminal": getattr(current_user, 'terminal', None)
+            },
+            ip_address=request.client.host if request.client else None
+        )
+        db.commit()
+    except Exception as e:
+        print(f"Erro ao registrar log de auditoria: {e}")
 
     return {
         "sucesso": True,
@@ -502,6 +528,7 @@ def registrar_uso(
             entidade_tipo="Sacola",
             entidade_id=sacola_id,
             detalhes={
+                "sacola_id": sacola_id,
                 "valor_compra": valor_float,
                 "utilizacoes": sacola.utilizacoes,
                 "cliente_cpf": sacola.cliente_cpf,
@@ -566,7 +593,12 @@ def registrar_uso(
     summary="Devolver sacola",
     dependencies=[Depends(require_role(["caixa", "gerente", "admin"]))]
 )
-def devolver_sacola(sacola_id: str, db: Session = Depends(get_db)):
+def devolver_sacola(
+    sacola_id: str,
+    request: Request,
+    current_user: models.Usuario = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     """
     Processa a devolução de uma sacola e calcula desconto.
 
@@ -604,6 +636,28 @@ def devolver_sacola(sacola_id: str, db: Session = Depends(get_db)):
 
     db.commit()
     db.refresh(sacola)
+
+    # ========== LOG DE AUDITORIA ==========
+    try:
+        registrar_log(
+            db=db,
+            usuario=current_user,
+            acao="devolver_sacola",
+            entidade_tipo="Sacola",
+            entidade_id=sacola_id,
+            detalhes={
+                "sacola_id": sacola_id,
+                "utilizacoes": sacola.utilizacoes,
+                "dias_de_uso": dias_uso,
+                "estado": estado,
+                "desconto_concedido": desconto,
+                "terminal": getattr(current_user, 'terminal', None)
+            },
+            ip_address=request.client.host if request.client else None
+        )
+        db.commit()
+    except Exception as e:
+        print(f"Erro ao registrar log de auditoria: {e}")
 
     return {
         "sucesso": True,

@@ -20,7 +20,7 @@ A API Bag+ fornece um ecossistema completo para operações de balcão e gestão
 *   **Comunicação:** Sistema de notificações push e broadcast para engajamento.
 
 ---
-**Suporte Técnico:** [jean06soares@gmail.com](mailto:jean06soares@gmail.com) | **Total:** 72 endpoints operacionais.
+**Suporte Técnico:** [jean06soares@gmail.com](mailto:jean06soares@gmail.com) | **Total:** 73 endpoints operacionais.
 """
 
 CONTACT = {
@@ -53,6 +53,10 @@ TAGS_METADATA = [
     {
         "name": "Notificações",
         "description": "**Notificações para Clientes** - Sistema de notificações push para app mobile (futuro)"
+    },
+    {
+        "name": "Auditoria",
+        "description": "**Auditoria do Caixa** - Resumo do turno e últimas ações do operador logado | *Requer: Caixa*"
     },
     {
         "name": "Admin - Lotes",
