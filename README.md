@@ -81,7 +81,7 @@ Status: Quando rodando
 - **Sistema de terminais** - Rastreamento por caixa (terminal no token JWT)
 - **Gestão de usuários** - Criar, editar, listar e desativar usuários
 - **Sistema de roles** - Admin, Gerente, Caixa com permissões granulares
-- **35+ endpoints protegidos** - Controle de acesso por role
+- **Endpoints protegidos** - Controle de acesso por role em toda a API
 - **Logs de auditoria** - Rastreamento completo: quem, quando, onde (terminal), de onde (IP), qual entidade/unidade
 - **Token de desenvolvimento** - Gerado automaticamente ao iniciar servidor
 - **Middleware de autenticação** - Validação automática em todos endpoints admin
@@ -132,6 +132,7 @@ Status: Quando rodando
 - **Sistema de suspensão** - Suspender/reativar clientes com motivo registrado
 - **Bloqueio de uso** - Clientes suspensos não podem usar sacolas
 - **Histórico completo** - Timeline de eventos do cliente
+- **Edição de cadastro** - Atualização de nome e telefone
 - **Busca por nome** - Busca parcial e case-insensitive
 - **Validação de CPF** - Verificar formato e dígitos verificadores (validate-docbr)
 - **Validação de existência** - Verificar se cliente existe sem criar cadastro
@@ -173,9 +174,10 @@ Status: Quando rodando
 - **Resolver alertas** - Marcar alertas como resolvidos com observação
 
 ### Auditoria e Compliance
-- **Logs automáticos** - Todas ações admin registradas automaticamente
+- **Logs automáticos** - Todas ações admin e operações de caixa registradas automaticamente
 - **Rastreamento completo** - Usuário, terminal, IP, timestamp, entidade, unidade
-- **Consulta de logs** - Filtros por data, usuário (busca parcial), ação, entidade
+- **Consulta de logs (Admin/Gerente)** - Filtros por data, usuário (busca parcial), ação, entidade
+- **Resumo do turno (Caixa)** - Contagem de ativações, usos e devoluções do dia + últimas ações do próprio operador
 - **Detalhes em JSON** - Informações completas sobre cada operação
 - **Filtro username** - Busca parcial case-insensitive (ex: "joão" encontra "joão.silva")
 
@@ -252,6 +254,31 @@ python run.py
 O servidor estará rodando em `http://localhost:8000`
 
 **Token JWT de desenvolvimento será exibido no console!**
+
+---
+
+### Frontend Caixa (Interface Operacional)
+
+#### Pré-requisitos
+- Node.js 20+
+- pnpm
+
+#### Instalação
+```bash
+# 1. Navegar para o monorepo de apps
+cd apps
+
+# 2. Instalar dependências (workspace)
+pnpm install
+
+# 3. Rodar o app caixa
+cd caixa
+pnpm dev
+```
+
+O frontend estará rodando em `http://localhost:5173`
+
+> **Importante:** o backend precisa estar rodando em paralelo (`http://localhost:8000`) para o login e as operações funcionarem.
 
 ---
 
@@ -387,18 +414,12 @@ Válido por: 24 horas
 
 **Com terminal (caixas):**
 ```http
-POST /api/auth/login
-Content-Type: application/x-www-form-urlencoded
-
-username=caixa_teste&password=senha123&terminal=caixa 2
+POST /api/auth/login?username=caixa_teste&password=senha123&terminal=caixa 2
 ```
 
 **Sem terminal (admin/gerente):**
 ```http
-POST /api/auth/login
-Content-Type: application/x-www-form-urlencoded
-
-username=DEV_ADMIN_USERNAME&password=DEV_ADMIN_PASSWORD
+POST /api/auth/login?username=DEV_ADMIN_USERNAME&password=DEV_ADMIN_PASSWORD
 ```
 
 **Response:**
@@ -422,14 +443,8 @@ username=DEV_ADMIN_USERNAME&password=DEV_ADMIN_PASSWORD
 ### Usar Token nos Endpoints Protegidos
 
 ```http
-POST /api/sacolas/registrar-uso
+POST /api/sacolas/registrar-uso?qr_code=BAG-00001:2026-05-13:a1b2c3&valor_compra=125,50
 Authorization: Bearer eyJ...
-Content-Type: application/json
-
-{
-  "qr_code": "BAG-00001:2026-05-13:a1b2c3",
-  "valor_compra": "125,50"
-}
 ```
 
 ### Sistema de Roles e Permissões
@@ -443,7 +458,7 @@ Content-Type: application/json
 - ✅ Transferir sacolas entre clientes
 - ✅ Resetar contador de utilizações
 - ✅ Todos relatórios e exportações
-- ✅ Ver logs de auditoria
+- ✅ Ver logs de auditoria (todos)
 - ✅ entidade_id=NULL (visão global)
 
 #### 🟡 Gerente (Acesso Gerencial)
@@ -456,7 +471,7 @@ Content-Type: application/json
 - ✅ Exportar dados (CSV)
 - ✅ Consultar estoque
 - ✅ Listar usuários (read-only)
-- ✅ Ver logs de auditoria
+- ✅ Ver logs de auditoria (da sua unidade)
 - ✅ Suspender/reativar clientes
 - ✅ Transferir sacolas
 - ✅ Resetar contador
@@ -465,11 +480,14 @@ Content-Type: application/json
 - ❌ Gerenciar entidades/unidades
 
 #### 🟢 Caixa (Operacional Apenas)
-- ✅ Cadastrar clientes
-- ✅ Ativar sacolas
+- ✅ Cadastrar e editar clientes
+- ✅ Buscar clientes (CPF ou nome) e ver histórico completo
+- ✅ Ativar sacolas via QR Code
 - ✅ Registrar uso de sacolas (com autenticação obrigatória)
 - ✅ Devolver sacolas
-- ✅ Buscar clientes e sacolas
+- ✅ Verificar QR Code sem ativar
+- ✅ Ver histórico de uso de uma sacola
+- ✅ Ver resumo do próprio turno (ativações, usos, devoluções do dia)
 - ✅ Login com terminal
 - ❌ Nenhum acesso a endpoints admin
 
@@ -480,7 +498,7 @@ Content-Type: application/json
 - **Produção:** `https://api.bagplus.com.br/docs`
 - **Staging:** `https://staging.bagplus.com.br/docs`
 - **Local:** `http://localhost:8000/docs`
-- **Interface do Caixa:** `apps/caixa/index.html` (em desenvolvimento)
+- **Interface do Caixa:** `apps/caixa` (React + Vite, rodando em `http://localhost:5173`)
 
 ---
 
@@ -516,7 +534,9 @@ bagplus-loyalty-system/
 │       │   │   │   ├── entidades.py      
 │       │   │   │   └── unidades.py      
 │       │   │   ├── sacolas.py
+│       │   │   ├── clientes.py
 │       │   │   ├── notificacoes.py
+│       │   │   ├── auditoria_caixa.py
 │       │   │   └── auth.py
 │       │   ├── core/
 │       │   │   ├── security.py
@@ -545,7 +565,22 @@ bagplus-loyalty-system/
 │       └── .env
 │
 ├── apps/
-│   └── shared/
+│   ├── caixa/                  # Frontend operacional (React + Vite + TS)
+│   │   ├── src/
+│   │   │   ├── components/     # Layout, sidebar, hamburger button
+│   │   │   ├── contexts/       # Auth e Theme
+│   │   │   ├── pages/          # Home, Login, Cadastrar/Buscar Cliente,
+│   │   │   │                   # Ativar/Registrar Uso/Devolução,
+│   │   │   │                   # Verificar QR, Histórico
+│   │   │   └── lib/
+│   │   ├── vite.config.ts
+│   │   └── package.json
+│   ├── admin-gestor/            # Frontend de gestão (planejado)
+│   ├── mobile/                  # App mobile (planejado)
+│   └── shared/                  # @bagplus/shared (api, types, utils, hooks)
+│       ├── api/
+│       ├── types/
+│       └── utils/
 │
 ├── storage/
 │   ├── qrcodes/
@@ -586,6 +621,14 @@ bagplus-loyalty-system/
 - **validate-docbr** - Validação de CPF e CNPJ
 - **slowapi** - Rate limiting para proteção de API
 
+### Frontend (Caixa)
+- **React 19 + TypeScript** - Interface operacional
+- **Vite** - Build tool e dev server
+- **Tailwind CSS v4** - Estilização e tema dark/light
+- **React Router DOM** - Roteamento
+- **pnpm workspaces** - Monorepo (`@bagplus/shared`)
+- **lucide-react** - Ícones
+
 ### Autenticação e Segurança
 - **python-jose[cryptography]** - Tokens JWT com multi-tenancy
 - **passlib[bcrypt]** - Hash de senhas
@@ -608,17 +651,18 @@ bagplus-loyalty-system/
 
 ---
 
-## API Endpoints (69 endpoints operacionais)
+## API Endpoints (73 endpoints operacionais)
 
 > **Documentação completa e interativa:**
 > - Produção: `https://api.bagplus.com.br/docs`
 > - Staging: `https://staging.bagplus.com.br/docs`
 > - Local: `http://localhost:8000/docs`
 
-### Clientes (9 endpoints - Públicos)
+### Clientes (10 endpoints - Públicos)
 ### Sacolas (8 endpoints - Públicos)
 ### Notificações (4 endpoints - Públicos)
 ### Autenticação (3 endpoints - Públicos)
+### Auditoria (1 endpoint - Caixa)
 ### Admin - Lotes (3 endpoints - Admin + Gerente)
 ### Admin - Suspensão (3 endpoints - Admin + Gerente)
 ### Admin - Alertas (2 endpoints - Admin + Gerente)
@@ -685,6 +729,7 @@ bagplus-loyalty-system/
 #### clientes
 - cpf (PK)
 - nome
+- telefone
 - data_cadastro
 - status_beneficios (ativo/suspenso/bloqueado)
 - motivo_suspensao
@@ -916,6 +961,11 @@ taskkill /PID <PID> /F
 - Criar a venv fora do OneDrive: `python -m venv C:\venvs\bagplus`
 - Ou pausar sincronização do OneDrive antes de criar a venv
 
+#### pnpm não reconhecido (Windows)
+- Instalar Node.js (com "Add to PATH" marcado) e depois `npm install -g pnpm`
+- Se aparecer erro de política de execução, rodar:
+  `Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned`
+
 ---
 
 ## Contato
@@ -936,8 +986,8 @@ Este é um projeto comercial proprietário. O código está disponível para ava
 ---
 
 **Versão:** v0.94-beta  
-**Endpoints:** 71 operacionais  
+**Endpoints:** 73 operacionais  
 **Tabelas:** 14  
-**Atualizado:** 13/05/2026
+**Atualizado:** 12/06/2026
 **Arquitetura:** SaaS Multi-Tenant + Modular Monorepo + Docker  
 **Status:** 🟢 Produção Online (AWS São Paulo)

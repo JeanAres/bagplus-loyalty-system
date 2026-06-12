@@ -10,9 +10,9 @@ Interface operacional para caixas do sistema Bag+.
 
 ## Rotas
 - `/login` — Autenticação (exclusivo role caixa)
-- `/` — Home com atalhos rápidos
+- `/` — Home com leitura rápida e resumo do turno
 - `/cadastrar-cliente` — Cadastro de novo cliente
-- `/buscar-cliente` — Busca por CPF ou nome
+- `/buscar-cliente` — Busca por CPF ou nome (com edição inline e histórico)
 - `/ativar` — Ativar sacola via QR Code
 - `/registrar-uso` — Registrar uso via QR Code
 - `/devolucao` — Processar devolução
@@ -26,6 +26,9 @@ Interface operacional para caixas do sistema Bag+.
 - Sessão via sessionStorage (logout automático no hard reload)
 - Sidebar recolhível com navegação por seções
 - Breadcrumb no header
+- Home: leitura rápida de QR Code com redirecionamento automático conforme status da sacola (estoque → ativar, ativo → registrar uso/devolver)
+- Home: resumo do turno com contadores de ativações, usos e devoluções + últimas ações
+- Busca de cliente: abas Dados e Histórico (timeline completa de eventos)
 
 ## Rodar localmente
 ```bash
