@@ -96,7 +96,7 @@ body {
     user-select: none;
     color: var(--muted-foreground);
     flex-shrink: 0;
-    transform: scale(0.53);
+    transform: scale(0.53); transform-origin: center center;
     transform-origin: center center;
   }
 
@@ -140,9 +140,15 @@ body {
 
 .burger-icon {
   position: absolute;
-  padding: 4px 0;
+  top: 0;
+  left: 0;
   height: 36px;
   width: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transform: translateX(1px);
 }
 
 .burger-container {
