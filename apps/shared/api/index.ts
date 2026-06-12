@@ -214,6 +214,35 @@ export async function historicoCompletoCliente(cpf: string): Promise<HistoricoCo
 }
 
 // ============================================
+// AUDITORIA (CAIXA)
+// ============================================
+
+export interface UltimaAcao {
+  acao: string;
+  timestamp: string;
+  sacola_id?: string | null;
+  cliente_nome?: string | null;
+  valor_compra?: number | null;
+  desconto_concedido?: number | null;
+}
+
+export interface MeuTurno {
+  data: string;
+  usuario: { id: number; nome: string; username: string };
+  resumo: {
+    ativacoes: number;
+    usos_registrados: number;
+    devolucoes: number;
+    total_operacoes: number;
+  };
+  ultimas_acoes: UltimaAcao[];
+}
+
+export async function meuTurno(): Promise<MeuTurno> {
+  return request('/api/auditoria/meu-turno');
+}
+
+// ============================================
 // SACOLAS
 // ============================================
 

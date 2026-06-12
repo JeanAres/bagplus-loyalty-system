@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { devolverSacola, buscarSacola } from '@bagplus/shared/api';
 import { formatMoney } from '@bagplus/shared/utils';
 import type { Sacola } from '@bagplus/shared/types';
@@ -21,6 +22,7 @@ interface ResultadoDevolucao {
 }
 
 export default function Devolucao() {
+  const location = useLocation();
   const [step, setStep] = useState<Step>('qrcode');
   const [qrCode, setQrCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -28,6 +30,32 @@ export default function Devolucao() {
   const [error, setError] = useState<string | null>(null);
   const [sacola, setSacola] = useState<Sacola | null>(null);
   const [resultado, setResultado] = useState<ResultadoDevolucao | null>(null);
+
+  // Pré-preenche QR Code vindo da Leitura Rápida / Registrar Uso e busca a sacola automaticamente
+  useEffect(() => {
+    const qrFromState = (location.state as { qrCode?: string } | null)?.qrCode;
+    if (qrFromState) {
+      const partes = qrFromState.trim().split(':');
+      if (partes.length === 3 && partes[0].startsWith('BAG-')) {
+        setQrCode(qrFromState);
+        setIsBuscando(true);
+        buscarSacola(partes[0])
+          .then((info) => {
+            if (info.status !== 'ativo') {
+              setError(`Sacola não está ativa. Status atual: ${info.status}`);
+              return;
+            }
+            setSacola(info);
+            setStep('confirmar');
+          })
+          .catch((err) => {
+            setError(err instanceof Error ? err.message : 'Sacola não encontrada');
+          })
+          .finally(() => setIsBuscando(false));
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleQrCodeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

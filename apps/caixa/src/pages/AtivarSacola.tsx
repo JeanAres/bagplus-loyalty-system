@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { ativarSacola, buscarCliente } from '@bagplus/shared/api';
 import { formatCPF, cleanCPF, validateCPF } from '@bagplus/shared/utils';
 import { QrCode, CheckCircle, Loader2, User } from 'lucide-react';
@@ -12,6 +13,7 @@ interface ResultadoAtivacao {
 }
 
 export default function AtivarSacola() {
+  const location = useLocation();
   const [step, setStep] = useState<Step>('qrcode');
   const [qrCode, setQrCode] = useState('');
   const [cpf, setCpf] = useState('');
@@ -19,6 +21,19 @@ export default function AtivarSacola() {
   const [error, setError] = useState<string | null>(null);
   const [clienteNome, setClienteNome] = useState('');
   const [resultado, setResultado] = useState<ResultadoAtivacao | null>(null);
+
+  // Pré-preenche QR Code vindo da Leitura Rápida (Home) e avança automaticamente
+  useEffect(() => {
+    const qrFromState = (location.state as { qrCode?: string } | null)?.qrCode;
+    if (qrFromState) {
+      const partes = qrFromState.trim().split(':');
+      if (partes.length === 3 && partes[0].startsWith('BAG-')) {
+        setQrCode(qrFromState);
+        setStep('cliente');
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleQrCodeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

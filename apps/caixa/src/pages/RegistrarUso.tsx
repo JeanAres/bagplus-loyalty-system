@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { registrarUso, buscarSacola } from '@bagplus/shared/api';
 import { formatMoney, parseMoney } from '@bagplus/shared/utils';
 import type { Sacola } from '@bagplus/shared/types';
@@ -29,7 +30,10 @@ function formatarValorInput(input: string): string {
 }
 
 export default function RegistrarUso() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [step, setStep] = useState<Step>('qrcode');
+  const [sugerirDevolucao, setSugerirDevolucao] = useState(false);
   const [qrCode, setQrCode] = useState('');
   const [valor, setValor] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -37,6 +41,30 @@ export default function RegistrarUso() {
   const [error, setError] = useState<string | null>(null);
   const [sacola, setSacola] = useState<Sacola | null>(null);
   const [resultado, setResultado] = useState<ResultadoUso | null>(null);
+
+  // Pré-preenche QR Code vindo da Leitura Rápida (Home) e busca a sacola automaticamente
+  useEffect(() => {
+    const state = location.state as { qrCode?: string; sugerirDevolucao?: boolean } | null;
+    const qrFromState = state?.qrCode;
+    if (qrFromState) {
+      const partes = qrFromState.trim().split(':');
+      if (partes.length === 3 && partes[0].startsWith('BAG-')) {
+        setQrCode(qrFromState);
+        setSugerirDevolucao(!!state?.sugerirDevolucao);
+        setIsBuscando(true);
+        buscarSacola(partes[0])
+          .then((info) => {
+            setSacola(info);
+            setStep('valor');
+          })
+          .catch((err) => {
+            setError(err instanceof Error ? err.message : 'Sacola não encontrada');
+          })
+          .finally(() => setIsBuscando(false));
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleQrCodeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -248,6 +276,16 @@ export default function RegistrarUso() {
               </span>
             </div>
           </div>
+
+          {sugerirDevolucao && (
+            <button
+              type="button"
+              onClick={() => navigate('/devolucao', { state: { qrCode } })}
+              className="w-full text-left px-3 py-2.5 bg-secondary rounded-lg text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Prefere devolver esta sacola em vez de registrar uso? <span className="text-primary font-medium">Ir para devolução</span>
+            </button>
+          )}
 
           <form onSubmit={handleRegistrar} className="space-y-3">
             <div className="space-y-1.5">
