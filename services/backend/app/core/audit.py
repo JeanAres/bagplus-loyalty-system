@@ -12,35 +12,31 @@ def registrar_log(
     db: Session,
     usuario: Optional[models.Usuario],
     acao: str,
+    # Novos campos (Sprint 10)
+    tabela: Optional[str] = None,
+    registro_id: Optional[int] = None,
+    # Campos legados (mantidos para compatibilidade)
     entidade_tipo: Optional[str] = None,
     entidade_id: Optional[str] = None,
     detalhes: Optional[dict] = None,
     ip_address: Optional[str] = None
 ):
-    """
-    Registra uma ação no log de auditoria
-    
-    Args:
-        db: Sessão do banco
-        usuario: Usuário que executou a ação (None se sistema)
-        acao: Nome da ação (ex: "suspender_cliente")
-        entidade_tipo: Tipo de entidade afetada (ex: "Cliente")
-        entidade_id: ID da entidade (ex: CPF)
-        detalhes: Dicionário com detalhes adicionais
-        ip_address: IP do requisitante
-    """
+    # Compatibilidade: entidade_tipo vira tabela se tabela não informada
+    tabela_final = tabela or entidade_tipo
+
     log = models.LogAuditoria(
         usuario_id=usuario.id if usuario else None,
-        usuario_username=usuario.username if usuario else "sistema",
+        entidade_id=usuario.entidade_id if usuario else None,
+        unidade_id=usuario.unidade_id if usuario else None,
         acao=acao,
-        entidade_tipo=entidade_tipo,
-        entidade_id=entidade_id,
+        tabela=tabela_final,
+        registro_id=int(entidade_id) if entidade_id and entidade_id.isdigit() else None,
         detalhes=json.dumps(detalhes, ensure_ascii=False) if detalhes else None,
-        ip_address=ip_address,
-        data_hora=datetime.now()
+        ip=ip_address,
+        timestamp=datetime.now()
     )
-    
+
     db.add(log)
     db.commit()
-    
+
     return log

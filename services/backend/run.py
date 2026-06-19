@@ -14,7 +14,8 @@ if __name__ == "__main__":
     import uvicorn
     
     # Setup de desenvolvimento
-    if os.getenv("ENVIRONMENT", "development") == "development":
+    environment = os.getenv("ENVIRONMENT", "development")
+    if environment in ["development", "local"]:
         admin = criar_admin_padrao(SessionLocal)
         exibir_token_dev(admin)
     

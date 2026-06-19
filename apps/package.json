@@ -1,0 +1,17 @@
+{
+    "name": "bagplus-apps",
+    "private": true,
+    "version": "1.0.0",
+    "packageManager": "pnpm@10.4.1",
+    "scripts": {
+      "caixa": "pnpm --filter caixa dev",
+      "admin": "pnpm --filter admin-gestor dev",
+      "build:caixa": "pnpm --filter caixa build",
+      "build:admin": "pnpm --filter admin-gestor build"
+    },
+    "pnpm": {
+      "overrides": {
+        "tailwindcss>nanoid": "3.3.7"
+      }
+    }
+  }

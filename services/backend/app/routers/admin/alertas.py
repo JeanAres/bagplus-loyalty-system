@@ -18,7 +18,15 @@ router = APIRouter(
 @router.get(
     "/",
     summary="Listar alertas",
-    description="""
+)
+def listar_alertas(
+    resolvido: bool = None,
+    gravidade: str = None,
+    tipo: str = None,
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
+):
+    """
     Lista alertas de padrões suspeitos detectados automaticamente.
     
     **Tipos de alertas detectados:**
@@ -52,15 +60,6 @@ router = APIRouter(
     
     **Observação:** Ordenado por data de detecção (mais recente primeiro)
     """
-)
-def listar_alertas(
-    resolvido: bool = None,
-    gravidade: str = None,
-    tipo: str = None,
-    db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
-):
-    """Lista alertas com filtros opcionais"""
     
     query = db.query(models.Alerta)
     
@@ -121,7 +120,14 @@ def listar_alertas(
 @router.post(
     "/{alerta_id}/resolver",
     summary="Resolver alerta",
-    description="""
+)
+def resolver_alerta(
+    alerta_id: int,
+    observacao: str,
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
+):
+    """
     Marca um alerta como resolvido após investigação.
     
     **Quando usar:**
@@ -143,12 +149,11 @@ def listar_alertas(
     - observacao: Resultado da investigação (mínimo 10 caracteres)
     
     **Exemplos de observações:**
-```
+
     "Verificado com cliente. Era rancho legítimo de fato. Liberado."
     "Confirmada fraude. Cliente suspenso por uso indevido."
     "Cliente explicou situação. Foram múltiplas compras no mesmo dia. Normal."
     "Padrão suspeito confirmado. Monitorar próximos usos."
-```
     
     **Validações:**
     - Alerta deve existir
@@ -157,14 +162,6 @@ def listar_alertas(
     
     **Observação:** Após resolver, alerta não pode ser "desresolvido"
     """
-)
-def resolver_alerta(
-    alerta_id: int,
-    observacao: str,
-    db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
-):
-    """Marca alerta como resolvido"""
     
     alerta = db.query(models.Alerta).filter(models.Alerta.id == alerta_id).first()
     if not alerta:

@@ -18,145 +18,133 @@ router = APIRouter(
 @router.get(
     "/logs",
     summary="Consultar logs de auditoria",
-    description="""
-    Retorna logs de ações administrativas para auditoria.
-    
-    **Permissão:** Admin ou Gerente
-    
-    **Filtros disponíveis (opcionais):**
-    - data_inicio: Data inicial (YYYY-MM-DD)
-    - data_fim: Data final (YYYY-MM-DD)
-    - usuario_id: Filtrar por usuário específico
-    - acao: Tipo de ação (suspender_cliente, transferir_sacola, etc)
-    - entidade_tipo: Tipo de entidade (Cliente, Sacola, Usuario)
-    
-    **Informações retornadas:**
-    - ID do log
-    - Usuário que executou (username e nome)
-    - Ação realizada
-    - Entidade afetada (tipo e ID)
-    - Detalhes da ação (JSON)
-    - IP de origem
-    - Data e hora
-    
-    **Exemplos:**
-
-# Todos os logs
-GET /api/admin/auditoria/logs
-
-# Logs de suspensões
-GET /api/admin/auditoria/logs?acao=suspender_cliente
-
-# Logs de um usuário específico
-GET /api/admin/auditoria/logs?usuario_id=1
-
-# Logs de março
-GET /api/admin/auditoria/logs?data_inicio=2026-03-01&data_fim=2026-03-31
-
-**Quando usar:**
-    - Auditoria de segurança
-    - Investigação de ações
-    - Compliance e conformidade
-    - Rastreamento de alterações
-    
-    **Observação:** 
-    - Logs ordenados por data (mais recente primeiro)
-    - Limite de 100 resultados por consulta
-    """
 )
 def consultar_logs(
     data_inicio: str = None,
     data_fim: str = None,
     usuario_id: int = None,
+    usuario_username: str = None,
     acao: str = None,
-    entidade_tipo: str = None,
+    tabela: str = None,
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(require_role(["admin", "gerente"]))
 ):
-    """Consulta logs de auditoria com filtros"""
-    
-    # Query base
+    """
+    Retorna logs de ações administrativas para auditoria.
+
+    **Permissão:** Admin ou Gerente
+
+    **Comportamento por role:**
+    - Admin: todos os logs do sistema
+    - Gerente: apenas logs da sua unidade
+
+    **Filtros disponíveis (opcionais):**
+    - data_inicio: Data inicial (YYYY-MM-DD)
+    - data_fim: Data final (YYYY-MM-DD)
+    - usuario_id: Filtrar por ID do usuário
+    - usuario_username: Filtrar por username (busca parcial)
+    - acao: Tipo de ação (login, suspender_cliente, registrar_uso, etc)
+    - tabela: Tabela afetada (Cliente, Sacola, Usuario, Entidade, Unidade)
+
+    **Exemplos:**
+    - **Todos os logs:** /api/admin/auditoria/logs
+    - **Logs de suspensões:** /api/admin/auditoria/logs?acao=suspender_cliente
+    - **Logs de um usuário:** /api/admin/auditoria/logs?usuario_id=1
+    - **Logs de março:** /api/admin/auditoria/logs?data_inicio=2026-03-01&data_fim=2026-03-31
+
+    **Observação:** Logs ordenados por data (mais recente primeiro), limite de 100 resultados
+    """
+
+    eh_gerente = current_user.role == models.UserRole.gerente
+
     query = db.query(models.LogAuditoria)
-    
+
+    # Gerente vê apenas logs da sua unidade
+    if eh_gerente:
+        query = query.filter(
+            models.LogAuditoria.unidade_id == current_user.unidade_id
+        )
+
     # Filtrar por período
     if data_inicio:
         try:
             dt_inicio = datetime.strptime(data_inicio, '%Y-%m-%d')
-            query = query.filter(models.LogAuditoria.data_hora >= dt_inicio)
+            query = query.filter(models.LogAuditoria.timestamp >= dt_inicio)
         except ValueError:
             raise HTTPException(
                 status_code=400,
                 detail="Data início inválida. Use formato: YYYY-MM-DD"
             )
-    
+
     if data_fim:
         try:
             dt_fim = datetime.strptime(data_fim, '%Y-%m-%d').replace(hour=23, minute=59, second=59)
-            query = query.filter(models.LogAuditoria.data_hora <= dt_fim)
+            query = query.filter(models.LogAuditoria.timestamp <= dt_fim)
         except ValueError:
             raise HTTPException(
                 status_code=400,
                 detail="Data fim inválida. Use formato: YYYY-MM-DD"
             )
-    
-    # Filtrar por usuário
+
+    # Filtrar por usuario_id
     if usuario_id:
         query = query.filter(models.LogAuditoria.usuario_id == usuario_id)
-    
+
+    # Filtrar por username via relacionamento (busca parcial case-insensitive)
+    if usuario_username:
+        query = query.join(models.Usuario).filter(
+            models.Usuario.username.ilike(f"%{usuario_username}%")
+        )
+
     # Filtrar por ação
     if acao:
         query = query.filter(models.LogAuditoria.acao == acao)
-    
-    # Filtrar por tipo de entidade
-    if entidade_tipo:
-        query = query.filter(models.LogAuditoria.entidade_tipo == entidade_tipo)
-    
-    # Executar query (limitar a 100 resultados)
-    logs = query.order_by(models.LogAuditoria.data_hora.desc()).limit(100).all()
-    
-    # Montar response
+
+    # Filtrar por tabela afetada
+    if tabela:
+        query = query.filter(models.LogAuditoria.tabela == tabela)
+
+    logs = query.order_by(models.LogAuditoria.timestamp.desc()).limit(100).all()
+
     logs_data = []
     for log in logs:
-        # Buscar usuário
-        usuario = None
-        if log.usuario_id:
-            usuario = db.query(models.Usuario).filter(
-                models.Usuario.id == log.usuario_id
-            ).first()
-        
-        # Parse detalhes JSON
         detalhes_parsed = None
         if log.detalhes:
             try:
                 detalhes_parsed = json.loads(log.detalhes)
-            except:
+            except Exception:
                 detalhes_parsed = log.detalhes
-        
+
         logs_data.append({
             "id": log.id,
             "usuario": {
                 "id": log.usuario_id,
-                "username": log.usuario_username,
-                "nome": usuario.nome if usuario else "Sistema"
+                "username": log.usuario.username if log.usuario else "sistema",
+                "nome": log.usuario.nome if log.usuario else "Sistema"
             },
             "acao": log.acao,
-            "entidade": {
-                "tipo": log.entidade_tipo,
-                "id": log.entidade_id
-            },
+            "tabela": log.tabela,
+            "registro_id": log.registro_id,
+            "entidade_id": log.entidade_id,
+            "unidade_id": log.unidade_id,
             "detalhes": detalhes_parsed,
-            "ip_address": log.ip_address,
-            "data_hora": log.data_hora
+            "ip": log.ip,
+            "timestamp": log.timestamp
         })
-    
+
     return {
         "total": len(logs_data),
+        "contexto": {
+            "role": current_user.role.value,
+            "unidade_id": current_user.unidade_id if eh_gerente else None
+        },
         "filtros_aplicados": {
             "data_inicio": data_inicio,
             "data_fim": data_fim,
             "usuario_id": usuario_id,
+            "usuario_username": usuario_username,
             "acao": acao,
-            "entidade_tipo": entidade_tipo
+            "tabela": tabela
         },
         "logs": logs_data,
         "observacao": "Limitado a 100 resultados mais recentes" if len(logs_data) == 100 else None

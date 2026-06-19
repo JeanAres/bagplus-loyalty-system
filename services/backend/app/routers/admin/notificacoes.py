@@ -13,7 +13,10 @@ import json
 
 router = APIRouter(prefix="/api/admin/notificacoes", tags=["Admin - Notificações"])
 
-@router.get("", summary="Listar Todas Notificações (Admin)")
+@router.get(
+    "",
+    summary="Listar Todas Notificações (Admin)",
+)
 def listar_todas_notificacoes(
     tipo: Optional[TipoNotificacao] = Query(None, description="Filtrar por tipo"),
     apenas_nao_lidas: bool = Query(False, description="Apenas não lidas"),
@@ -93,7 +96,10 @@ def listar_todas_notificacoes(
         ]
     }
 
-@router.post("/broadcast", summary="Enviar Notificação em Massa")
+@router.post(
+    "/broadcast",
+    summary="Enviar Notificação em Massa",
+    )
 def enviar_notificacao_massa(
     tipo: TipoNotificacao = Query(..., description="Tipo da notificação"),
     titulo: str = Query(..., min_length=5, description="Título da notificação"),
@@ -165,7 +171,10 @@ def enviar_notificacao_massa(
         }
     }
 
-@router.delete("/limpar-lidas", summary="Limpar Notificações Lidas Antigas")
+@router.delete(
+    "/limpar-lidas",
+    summary="Limpar Notificações Lidas Antigas",
+)
 def limpar_notificacoes_lidas(
     dias: int = Query(30, ge=1, description="Remover notificações lidas há mais de X dias"),
     db: Session = Depends(get_db),

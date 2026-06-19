@@ -3,21 +3,24 @@ Metadados e configuração da documentação da API
 """
 
 TITLE = "Bag+ API"
-VERSION = "0.90-beta"
+VERSION = "0.94-beta"
 
 DESCRIPTION = """
 **Solução integrada para gestão de sacolas reutilizáveis e fidelização sustentável.**
 
-A API Bag+ fornece um ecossistema completo para operações de balcão e gestão administrativa de alto nível.
+A API Bag+ fornece um ecossistema completo para operações de balcão e gestão administrativa de alto nível, construída como plataforma **SaaS multi-tenant** — múltiplos estabelecimentos e filiais operando de forma independente na mesma infraestrutura.
+
+**IMPORTANTE:** Todos os endpoints requerem autenticação JWT. Sistema protegido por roles: Admin, Gerente e Caixa.
 
 ### Pilares do Sistema
 *   **Operacional:** Ciclo completo da sacola (Ativação via QR Code, Uso e Devolução) e gestão de clientes.
-*   **Inteligência:** Dashboards analíticos, relatórios de crescimento e exportação de dados (CSV).
-*   **Segurança:** Detecção automática de fraudes, logs de auditoria e autenticação JWT por níveis de acesso (Admin/Gerente/Caixa).
+*   **Multi-Tenant:** Entidades, unidades, descontos por estabelecimento e isolamento de dados por unidade.
+*   **Inteligência:** Dashboards analíticos, relatórios de crescimento, vendas por unidade/entidade e exportação de dados (CSV).
+*   **Segurança:** Detecção automática de fraudes, logs de auditoria e autenticação JWT com contexto multi-tenant (Admin/Gerente/Caixa).
 *   **Comunicação:** Sistema de notificações push e broadcast para engajamento.
 
 ---
-**Suporte Técnico:** [jean06soares@gmail.com](mailto:jean06soares@gmail.com) | **Total:** 52 endpoints operacionais.
+**Suporte Técnico:** [jean06soares@gmail.com](mailto:jean06soares@gmail.com) | **Total:** 73 endpoints operacionais.
 """
 
 CONTACT = {
@@ -37,7 +40,7 @@ TAGS_METADATA = [
     },
     {
         "name": "Clientes",
-        "description": "**Gestão de Clientes** - Cadastro, busca, validação de CPF, estatísticas e histórico completo"
+        "description": "**Gestão de Clientes** - Cadastro, edição, busca, validação de CPF, estatísticas e histórico completo"
     },
     {
         "name": "Sacolas",
@@ -50,6 +53,10 @@ TAGS_METADATA = [
     {
         "name": "Notificações",
         "description": "**Notificações para Clientes** - Sistema de notificações push para app mobile (futuro)"
+    },
+    {
+        "name": "Auditoria",
+        "description": "**Auditoria do Caixa** - Resumo do turno e últimas ações do operador logado | *Requer: Caixa*"
     },
     {
         "name": "Admin - Lotes",
@@ -65,7 +72,7 @@ TAGS_METADATA = [
     },
     {
         "name": "Admin - Relatórios",
-        "description": "**Dashboard e Analytics** - Relatórios de vendas, estatísticas, crescimento MoM | *Requer: Admin ou Gerente*"
+        "description": "**Dashboard e Analytics** - Relatórios de vendas, estatísticas, crescimento MoM, vendas por unidade e por entidade | *Requer: Admin ou Gerente*"
     },
     {
         "name": "Admin - Sacolas",
@@ -86,6 +93,18 @@ TAGS_METADATA = [
     {
         "name": "Admin - Notificações",
         "description": "**Gestão de Notificações** - Broadcast, limpeza de antigas, estatísticas | *Requer: Admin ou Gerente*"
+    },
+    {
+        "name": "Admin - QR Codes",
+        "description": "**Geração de QR Codes** - Lotes sequenciais, download CSV/PDF, histórico de geração | *Requer: Admin*"
+    },
+    {
+        "name": "Admin - Entidades",
+        "description": "**Gestão de Entidades** - Cadastro de estabelecimentos, metas de desconto, listagem de unidades | *Requer: Admin*"
+    },
+    {
+        "name": "Admin - Unidades",
+        "description": "**Gestão de Unidades** - Filiais de cada entidade, endereços, ativação/desativação | *Requer: Admin*"
     }
 ]
 

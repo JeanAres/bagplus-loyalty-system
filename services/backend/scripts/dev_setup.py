@@ -9,7 +9,7 @@ def criar_admin_padrao(db_session_class):
     """Cria usuário admin padrão se não existir (apenas em desenvolvimento)"""
     environment = os.getenv("ENVIRONMENT", "development")
     
-    if environment != "development":
+    if environment not in ["development", "local"]:
         return None
     
     dev_username = os.getenv("DEV_ADMIN_USERNAME")

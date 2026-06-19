@@ -1,214 +1,169 @@
-import qrcode
-import hashlib
-import csv
+"""
+Script CLI para geração de QR Codes
+Usa o módulo core/qrcode_generator.py (mesma lógica da API)
+Sincronizado com API REST via ultimo_id.txt
+"""
+import sys
 import os
+
+# Adicionar path do backend ao sys.path
+# __file__ está em: scripts/qrcodes/gerar_qrcodes.py
+script_dir = os.path.dirname(os.path.abspath(__file__))  # scripts/qrcodes/
+scripts_dir = os.path.dirname(script_dir)                 # scripts/
+root_dir = os.path.dirname(scripts_dir)                   # bagplus-loyalty-system/
+backend_path = os.path.join(root_dir, 'services', 'backend')
+sys.path.insert(0, backend_path)
+
+from app.core.qrcode_generator import gerar_lote_qrcodes, ler_ultimo_id
+from app.core.security import SECRET_KEY
 from datetime import datetime
-from dotenv import load_dotenv
-from reportlab.lib.pagesizes import A4
-from reportlab.pdfgen import canvas
-from reportlab.lib.units import cm
-from reportlab.lib.utils import ImageReader
-from io import BytesIO
 
-load_dotenv('../../services/backend/.env')
 
-SECRET_KEY = os.getenv('SECRET_KEY')
-
-if not SECRET_KEY:
-    raise Exception("ERRO: SECRET_KEY não encontrada no arquivo .env")
-
-# Arquivo de controle de sequência
-CONTROLE_SEQUENCIA = '../../storage/qrcodes/ultimo_id.txt'
-
-def ler_ultimo_id():
-    """Lê o último ID gerado do arquivo de controle"""
-    if os.path.exists(CONTROLE_SEQUENCIA):
-        with open(CONTROLE_SEQUENCIA, 'r', encoding='utf-8') as f:
-            return int(f.read().strip())
-    return 0
-
-def salvar_ultimo_id(ultimo_id):
-    """Salva o último ID gerado no arquivo de controle"""
-    os.makedirs('../../storage/qrcodes', exist_ok=True)
-    with open(CONTROLE_SEQUENCIA, 'w', encoding='utf-8') as f:
-        f.write(str(ultimo_id))
-
-def gerar_checksum(sacola_id, data_criacao):
-    """Gera código de verificação de 6 caracteres baseado em ID + Data + SECRET_KEY"""
-    texto = f"{sacola_id}{data_criacao}{SECRET_KEY}"
-    hash_completo = hashlib.sha256(texto.encode()).hexdigest()
-    return hash_completo[:6]
-
-def gerar_qrcode_memoria(conteudo):
-    """Gera QR Code em memória (não salva arquivo)"""
-    qr = qrcode.QRCode(
-        version=1,
-        error_correction=qrcode.constants.ERROR_CORRECT_H,
-        box_size=10,
-        border=4,
-    )
-    qr.add_data(conteudo)
-    qr.make(fit=True)
+def main():
+    """Função principal do CLI"""
     
-    img = qr.make_image(fill_color="black", back_color="white")
-    return img
-
-def gerar_pdf_grid(inicio, fim, data_criacao):
-    """Gera PDF com grid de QR Codes direto da memória (sem arquivos PNG)"""
+    print("\n" + "="*60)
+    print("GERADOR DE QR CODES - BAG+ SYSTEM (CLI)")
+    print("="*60)
+    print("IDs são sequenciais e NUNCA se repetem!")
+    print("Sincronizado com API REST (compartilha ultimo_id.txt)")
+    print("="*60 + "\n")
     
-    pdf_path = f"../../storage/qrcodes/pdf/lote_{inicio:05d}-{fim:05d}_IMPRESSAO.pdf"
-    
-    # Configurações do PDF
-    c = canvas.Canvas(pdf_path, pagesize=A4)
-    largura, altura = A4
-    
-    # Configurações do grid
-    qr_size = 3 * cm  # 3cm x 3cm
-    cols = 2
-    rows = 5
-    margin_x = 3 * cm
-    margin_y = 2 * cm
-    spacing_x = 1 * cm
-    spacing_y = 1 * cm
-    
-    qr_index = 0
-    total_qrs = fim - inicio + 1
-    
-    print(f"\nGerando PDF para impressão...")
-    
-    for num in range(inicio, fim + 1):
-        sacola_id = f"BAG-{num:05d}"
-        checksum = gerar_checksum(sacola_id, data_criacao)
-        conteudo_qr = f"{sacola_id}:{data_criacao}:{checksum}"
-        
-        # Gerar QR Code em memória (não salva arquivo)
-        img_qr = gerar_qrcode_memoria(conteudo_qr)
-        
-        # Converter PIL Image para BytesIO para ReportLab usar
-        img_buffer = BytesIO()
-        img_qr.save(img_buffer, format='PNG')
-        img_buffer.seek(0)
-        img_reader = ImageReader(img_buffer)
-        
-        # Calcular posição no grid
-        page_qr_index = qr_index % (cols * rows)
-        
-        # Nova página se necessário
-        if qr_index > 0 and page_qr_index == 0:
-            c.showPage()
-        
-        col = page_qr_index % cols
-        row = page_qr_index // cols
-        
-        x = margin_x + col * (qr_size + spacing_x)
-        y = altura - margin_y - (row + 1) * (qr_size + spacing_y)
-        
-        # Desenhar QR Code
-        c.drawImage(img_reader, x, y, width=qr_size, height=qr_size)
-        
-        # Desenhar ID abaixo do QR Code
-        c.setFont("Helvetica-Bold", 8)
-        text_width = c.stringWidth(sacola_id, "Helvetica-Bold", 8)
-        c.drawString(x + (qr_size - text_width) / 2, y - 0.4 * cm, sacola_id)
-        
-        # Desenhar data (menor)
-        c.setFont("Helvetica", 6)
-        text_width = c.stringWidth(data_criacao, "Helvetica", 6)
-        c.drawString(x + (qr_size - text_width) / 2, y - 0.7 * cm, data_criacao)
-        
-        qr_index += 1
-    
-    c.save()
-    print(f"PDF gerado: {pdf_path}")
-    print(f"Total de páginas: {(total_qrs + (cols * rows) - 1) // (cols * rows)}")
-
-def gerar_lote(quantidade, data_criacao=None):
-    """Gera lote de QR Codes (CSV + PDF, sem PNGs individuais)"""
-    
-    # Se não passar data, usa data de hoje
-    if not data_criacao:
-        data_criacao = datetime.now().strftime('%Y-%m-%d')
-    
-    # Ler último ID usado
-    ultimo_id = ler_ultimo_id()
-    inicio = ultimo_id + 1
-    fim = inicio + quantidade - 1
-    
-    # Criar pastas se não existirem
-    os.makedirs("../../storage/qrcodes/csv", exist_ok=True)
-    os.makedirs("../../storage/qrcodes/pdf", exist_ok=True)
-    
-    # Lista para CSV
-    sacolas = []
-    
-    print(f"\n{'='*60}")
-    print(f"GERAÇÃO DE LOTE DE QR CODES")
-    print(f"{'='*60}")
-    print(f"Último ID gerado anteriormente: BAG-{ultimo_id:05d}")
-    print(f"Novo lote: BAG-{inicio:05d} até BAG-{fim:05d}")
-    print(f"Quantidade: {quantidade} sacolas")
-    print(f"Data de criação: {data_criacao}")
-    print(f"{'='*60}\n")
-    
-    # Confirmação de segurança
-    resposta = input("Confirma geração? (S/N): ").strip().upper()
-    if resposta != 'S':
-        print("\nGeração cancelada pelo usuário.")
+    # Verificar SECRET_KEY
+    if not SECRET_KEY:
+        print("ERRO: SECRET_KEY não encontrada no .env")
+        print("Verifique: services/backend/.env")
         return
     
+    # Mostrar último ID
+    ultimo_id = ler_ultimo_id()
+    proximo_id = ultimo_id + 1
+    
+    print(f"Status:")
+    if ultimo_id > 0:
+        print(f"Último ID gerado: BAG-{ultimo_id:05d}")
+    else:
+        print(f"Nenhum QR Code gerado ainda")
+    print(f"Próximo ID: BAG-{proximo_id:05d}")
     print()
-    print("Processando QR Codes...")
     
-    for num in range(inicio, fim + 1):
-        sacola_id = f"BAG-{num:05d}"
-        checksum = gerar_checksum(sacola_id, data_criacao)
+    # Input de quantidade
+    try:
+        quantidade_input = input("Quantos QR Codes gerar? (1-10000): ").strip()
+        quantidade = int(quantidade_input)
         
-        # Formato: BAG-00001:2026-03-31:a3f9d2
-        conteudo_qr = f"{sacola_id}:{data_criacao}:{checksum}"
+        if quantidade <= 0 or quantidade > 10000:
+            print("Quantidade deve estar entre 1 e 10.000")
+            return
+            
+    except ValueError:
+        print("Valor inválido. Digite um número entre 1 e 10.000")
+        return
+    except KeyboardInterrupt:
+        print("\nOperação cancelada")
+        return
+    
+    # Input de data (opcional)
+    data_hoje = datetime.now().strftime('%Y-%m-%d')
+    print(f"\nData de criação (deixe vazio para usar hoje: {data_hoje})")
+    data_input = input("Data (YYYY-MM-DD): ").strip()
+    data_criacao = data_input if data_input else None
+    
+    # Validar data se fornecida
+    if data_criacao:
+        try:
+            datetime.strptime(data_criacao, '%Y-%m-%d')
+        except ValueError:
+            print("Data inválida. Use formato YYYY-MM-DD (ex: 2026-04-15)")
+            return
+    
+    # Input de formatos
+    print("\nFormatos a gerar:")
+    print("   1 - Apenas CSV (importar no banco)")
+    print("   2 - Apenas PDF (enviar para gráfica)")
+    print("   3 - Ambos (CSV + PDF) [padrão]")
+    
+    try:
+        formato_opcao = input("   Escolha (1/2/3) [3]: ").strip() or "3"
+        
+        if formato_opcao == "1":
+            formatos = ["csv"]
+        elif formato_opcao == "2":
+            formatos = ["pdf"]
+        else:
+            formatos = ["csv", "pdf"]
+            
+    except KeyboardInterrupt:
+        print("\nOperação cancelada")
+        return
+    
+    # Calcular resumo
+    fim = proximo_id + quantidade - 1
+    data_exibir = data_criacao or data_hoje
+    
+    # Mostrar resumo
+    print("\n" + "="*60)
+    print("RESUMO DA GERAÇÃO:")
+    print("="*60)
+    print(f"   Intervalo: BAG-{proximo_id:05d} até BAG-{fim:05d}")
+    print(f"   Quantidade: {quantidade} QR Codes")
+    print(f"   Data: {data_exibir}")
+    print(f"   Formatos: {', '.join(formatos).upper()}")
+    print("="*60 + "\n")
+    
+    # Confirmação final
+    try:
+        confirmacao = input("Confirmar geração? (S/N): ").strip().upper()
+    except KeyboardInterrupt:
+        print("\nOperação cancelada")
+        return
+    
+    if confirmacao != 'S':
+        print("\nGeração cancelada pelo usuário")
+        return
+    
+    # GERAR QR CODES!
+    print("\nGerando QR Codes...\n")
+    
+    try:
+        resultado = gerar_lote_qrcodes(
+            quantidade=quantidade,
+            secret_key=SECRET_KEY,
+            data_criacao=data_criacao,
+            formatos=formatos
+        )
+        
+        # Sucesso!
+        print("\n" + "="*60)
+        print("GERAÇÃO CONCLUÍDA COM SUCESSO!")
+        print("="*60)
+        print(f"Quantidade: {resultado['quantidade']} QR Codes")
+        print(f"Intervalo: {resultado['intervalo']}")
+        print(f"Data: {resultado['data_criacao']}")
+        print(f"Próximo ID: BAG-{resultado['fim'] + 1:05d}")
+        print()
+        print("Arquivos gerados:")
+        
+        if resultado['arquivos']['csv']:
+            print(f"CSV: {resultado['arquivos']['csv']}")
+        
+        if resultado['arquivos']['pdf']:
+            print(f"PDF: {resultado['arquivos']['pdf']}")
+        
+        print()
+        print("Próximos passos:")
+        print("1. Importar CSV no sistema via API:")
+        print("  POST /api/admin/lotes/importar")
+        print("2. Enviar PDF para gráfica")
+        print("="*60 + "\n")
+        
+    except ValueError as e:
+        print(f"\nERRO: {e}")
+    except Exception as e:
+        print(f"\nERRO INESPERADO: {e}")
+        import traceback
+        traceback.print_exc()
 
-        # Adicionar à lista CSV
-        sacolas.append({
-            "id": sacola_id,
-            "data_criacao": data_criacao,
-            "checksum": checksum,
-            "qr_content": conteudo_qr
-        })
-        
-        # Mostrar progresso a cada 100
-        if num % 100 == 0 or num == fim:
-            print(f"✅ Processado até: {sacola_id}")
-    
-    # Salvar CSV
-    csv_path = f"../../storage/qrcodes/csv/lote_{inicio:05d}-{fim:05d}.csv"
-    with open(csv_path, 'w', newline='', encoding='utf-8') as f:
-        writer = csv.DictWriter(f, fieldnames=['id', 'data_criacao', 'checksum', 'qr_content'])
-        writer.writeheader()
-        writer.writerows(sacolas)
-    
-    print(f"\n✅ CSV gerado: {csv_path}")
-    
-    # Gerar PDF para impressão (QR Codes direto da memória)
-    gerar_pdf_grid(inicio, fim, data_criacao)
-    
-    # Atualizar controle de sequência
-    salvar_ultimo_id(fim)
-    
-    print(f"\n{'='*60}")
-    print(f"Controle atualizado: último ID = BAG-{fim:05d}")
-    print(f"\nCONCLUÍDO! {len(sacolas)} QR Codes processados com sucesso!")
-    print(f"Localização: ../../storage/qrcodes/")
-    print(f"\nArquivos gerados:")
-    print(f"   - CSV com dados: csv/lote_{inicio:05d}-{fim:05d}.csv")
-    print(f"   - PDF para gráfica: pdf/lote_{inicio:05d}-{fim:05d}_IMPRESSAO.pdf")
-    print(f"   - Controle de ID: ultimo_id.txt")
-    print(f"{'='*60}\n")
 
 if __name__ == "__main__":
-    print("\nGERADOR DE QR CODES - BAG+ SYSTEM")
-    print("IDs são sequenciais e NUNCA se repetem!")
-    print("Versão otimizada: Gera apenas CSV + PDF (sem PNGs individuais)\n")
-    
-    gerar_lote(quantidade=5)
-    
-    # Para gerar com data específica:
-    # gerar_lote(quantidade=5, data_criacao='2026-03-01')
+    main()

@@ -2,6 +2,7 @@
 Router público de notificações para clientes
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
+from app.middleware.auth import require_role
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.db.models import Notificacao, Cliente, TipoNotificacao
@@ -10,7 +11,11 @@ from typing import Optional
 
 router = APIRouter(prefix="/api/notificacoes", tags=["Notificações"])
 
-@router.post("", summary="Criar Notificação")
+@router.post(
+    "", 
+    summary="Criar Notificação",
+    dependencies=[Depends(require_role(["gerente", "admin"]))]
+)
 def criar_notificacao(
     cliente_cpf: str = Query(..., description="CPF do cliente"),
     tipo: TipoNotificacao = Query(..., description="Tipo da notificação"),
@@ -59,7 +64,11 @@ def criar_notificacao(
         }
     }
 
-@router.get("/{cpf}", summary="Listar Notificações do Cliente")
+@router.get(
+    "/{cpf}", 
+    summary="Listar Notificações do Cliente",
+    dependencies=[Depends(require_role(["gerente", "admin"]))]
+)
 def listar_notificacoes_cliente(
     cpf: str,
     apenas_nao_lidas: bool = Query(False, description="Filtrar apenas não lidas"),
@@ -111,7 +120,11 @@ def listar_notificacoes_cliente(
         ]
     }
 
-@router.put("/{notificacao_id}/ler", summary="Marcar Notificação como Lida")
+@router.put(
+    "/{notificacao_id}/ler", 
+    summary="Marcar Notificação como Lida",
+    dependencies=[Depends(require_role(["gerente", "admin"]))]
+)
 def marcar_como_lida(
     notificacao_id: int,
     db: Session = Depends(get_db)
@@ -151,7 +164,11 @@ def marcar_como_lida(
         }
     }
 
-@router.delete("/{notificacao_id}", summary="Remover Notificação")
+@router.delete(
+    "/{notificacao_id}", 
+    summary="Remover Notificação",
+    dependencies=[Depends(require_role(["gerente", "admin"]))]
+)
 def remover_notificacao(
     notificacao_id: int,
     db: Session = Depends(get_db)

@@ -6,8 +6,12 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from datetime import datetime
 from app.db import models
+from fastapi import Request
+from app.core.audit import registrar_log
 from app.core.security import verify_password, create_access_token
 from app.middleware.auth import get_current_user
+from app.core.rate_limiter import limiter
+from app.core.event_logger import security_logger
 
 router = APIRouter(
     prefix="/api/auth",
@@ -18,12 +22,22 @@ router = APIRouter(
 @router.post(
     "/login",
     summary="Login no sistema",
-    description="""
+)
+@limiter.limit("5/minute")
+def login(
+    username: str,
+    password: str,
+    terminal: str = None,
+    request: Request = None,
+    db: Session = Depends(get_db)
+):
+    """
     Autentica usuário e retorna token JWT.
     
     **Credenciais:**
     - username: Nome de usuário
     - password: Senha
+    - terminal: Terminal de trabalho (opcional - ex: caixa 1, caixa 2)
     
     **Retorna:**
     - access_token: Token JWT para usar nas requisições
@@ -38,15 +52,13 @@ router = APIRouter(
     4. Clique em "Authorize"
     5. Agora pode usar endpoints protegidos
     
-    **Observação:** Token válido por 24 horas em desenvolvimento
+    **Observação:** 
+    - Token válido por 24 horas para admin/gerente
+    - Token válido por 12 horas para caixa (turno de trabalho)
     """
-)
-def login(
-    username: str,
-    password: str,
-    db: Session = Depends(get_db)
-):
-    """Autentica usuário e retorna token JWT"""
+    
+    # Obter IP do cliente
+    client_ip = request.client.host if request and request.client else "unknown"
     
     # Buscar usuário
     user = db.query(models.Usuario).filter(
@@ -54,6 +66,13 @@ def login(
     ).first()
     
     if not user:
+        # Log: usuário não encontrado
+        security_logger.login_attempt(
+            username=username,
+            success=False,
+            ip=client_ip,
+            reason="usuario_nao_encontrado"
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Usuário ou senha incorretos",
@@ -62,6 +81,13 @@ def login(
     
     # Verificar senha
     if not verify_password(password, user.password_hash):
+        # Log: senha incorreta
+        security_logger.login_attempt(
+            username=username,
+            success=False,
+            ip=client_ip,
+            reason="senha_incorreta"
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Usuário ou senha incorretos",
@@ -70,6 +96,13 @@ def login(
     
     # Verificar se está ativo
     if not user.ativo:
+        # Log: usuário inativo
+        security_logger.login_attempt(
+            username=username,
+            success=False,
+            ip=client_ip,
+            reason="usuario_inativo"
+        )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Usuário inativo. Contate o administrador."
@@ -79,30 +112,69 @@ def login(
     user.ultimo_login = datetime.now()
     db.commit()
     
+    # Determinar expiração baseado na role
+    if user.role == "caixa":
+        expires_hours = 12  # Caixas: 12 horas (turno)
+    else:
+        expires_hours = 24  # Admin/Gerente: 24 horas
+    
+    expires_seconds = expires_hours * 3600
+    
     # Criar token
     access_token = create_access_token(
         data={
             "sub": user.username,
-            "role": user.role
-        }
+            "role": user.role,
+            "terminal": terminal,
+            "entidade_id": user.entidade_id,
+            "unidade_id": user.unidade_id
+        },
+        expires_hours=expires_hours
     )
     
+    # Registrar login no log de auditoria
+    registrar_log(
+        db=db,
+        usuario=user,
+        acao="login",
+        entidade_tipo="Usuario",
+        entidade_id=str(user.id),
+        detalhes={
+            "terminal": terminal,
+            "role": user.role,
+            "expires_hours": expires_hours
+        },
+        ip_address=client_ip
+    )
+    
+    # Log: login bem-sucedido
+    security_logger.login_attempt(
+        username=username,
+        success=True,
+        ip=client_ip
+    )
+
     return {
         "access_token": access_token,
         "token_type": "bearer",
-        "expires_in": 86400,  # 24 horas
+        "expires_in": expires_seconds,
         "user": {
             "id": user.id,
             "username": user.username,
             "nome": user.nome,
-            "role": user.role
+            "role": user.role,
+            "terminal": terminal,
+            "entidade_id": user.entidade_id,
+            "unidade_id": user.unidade_id
         }
     }
 
 @router.get(
     "/me",
     summary="Informações do usuário logado",
-    description="""
+)
+def get_me(current_user: models.Usuario = Depends(get_current_user)):
+    """
     Retorna informações do usuário autenticado pelo token.
     
     **Requer:** Token JWT válido
@@ -120,9 +192,6 @@ def login(
     - Obter informações do usuário logado
     - Exibir nome do usuário na interface
     """
-)
-def get_me(current_user: models.Usuario = Depends(get_current_user)):
-    """Retorna informações do usuário logado"""
     
     return {
         "id": current_user.id,
@@ -138,7 +207,9 @@ def get_me(current_user: models.Usuario = Depends(get_current_user)):
 @router.get(
     "/dev-token",
     summary="Token de desenvolvimento (apenas DEV)",
-    description="""
+)
+def get_dev_token(db: Session = Depends(get_db)):
+    """
     Gera token de desenvolvimento sem necessidade de login.
     
     **ATENÇÃO:** Este endpoint só funciona em ambiente de desenvolvimento.
@@ -155,9 +226,6 @@ def get_me(current_user: models.Usuario = Depends(get_current_user)):
     - Válido por 24 horas
     - Desabilitado em produção
     """
-)
-def get_dev_token(db: Session = Depends(get_db)):
-    """Gera token de desenvolvimento (apenas em DEV)"""
     
     import os
     environment = os.getenv("ENVIRONMENT", "development")

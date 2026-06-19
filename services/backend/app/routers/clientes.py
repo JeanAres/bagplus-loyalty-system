@@ -1,7 +1,9 @@
 """
 Endpoints relacionados a clientes
 """
+from app.core.validators import sanitize_string, validar_cpf_formato, validar_nome
 from fastapi import APIRouter, Depends, HTTPException
+from app.middleware.auth import require_role
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from datetime import datetime
@@ -16,7 +18,10 @@ router = APIRouter(
 @router.post(
     "/",
     summary="Cadastrar novo cliente",
-    description="""
+    dependencies=[Depends(require_role(["caixa", "gerente", "admin"]))]
+)
+def criar_cliente(cpf: str, nome: str, telefone: str = None, db: Session = Depends(get_db)):
+    """
     Cadastra um novo cliente no programa de fidelidade Bag+.
     
     **Quando usar:**
@@ -27,29 +32,35 @@ router = APIRouter(
     - CPF deve ter exatamente 11 dígitos (aceita formatação)
     - Nome deve ter no mínimo 3 caracteres
     - CPF não pode estar duplicado no sistema
+    - Telefone: 10 dígitos (fixo) ou 11 dígitos (celular)
     
     **Observação:** Aceita CPF com ou sem formatação (123.456.789-00 ou 12345678900)
     """
-)
-def criar_cliente(cpf: str, nome: str, db: Session = Depends(get_db)):
-    """Cria um novo cliente no sistema"""
     
-    # Validar CPF (apenas números)
-    cpf_numeros = cpf.replace('.', '').replace('-', '')
-    if len(cpf_numeros) != 11 or not cpf_numeros.isdigit():
-        raise HTTPException(status_code=400, detail="CPF inválido. Deve conter 11 dígitos")
+    # Validar e sanitizar CPF
+    cpf_validado = validar_cpf_formato(cpf)
     
-    # Validar nome
-    if len(nome.strip()) < 3:
-        raise HTTPException(status_code=400, detail="Nome deve ter pelo menos 3 caracteres")
+    # Validar e sanitizar nome
+    nome_validado = validar_nome(nome)
+    
+    # Validar e sanitizar telefone
+    telefone_validado = None
+    if telefone:
+        telefone_limpo = ''.join(filter(str.isdigit, telefone))
+        if len(telefone_limpo) not in (10, 11):
+            raise HTTPException(
+                status_code=400,
+                detail="Telefone inválido. Use 10 dígitos (fixo) ou 11 dígitos (celular)"
+            )
+        telefone_validado = telefone_limpo
     
     # Verificar se cliente já existe
-    cliente_existente = db.query(models.Cliente).filter(models.Cliente.cpf == cpf).first()
+    cliente_existente = db.query(models.Cliente).filter(models.Cliente.cpf == cpf_validado).first()
     if cliente_existente:
         raise HTTPException(status_code=400, detail="Cliente já cadastrado")
     
     # Criar cliente
-    cliente = models.Cliente(cpf=cpf, nome=nome.strip())
+    cliente = models.Cliente(cpf=cpf_validado, nome=nome_validado, telefone=telefone_validado)
     db.add(cliente)
     db.commit()
     db.refresh(cliente)
@@ -60,15 +71,18 @@ def criar_cliente(cpf: str, nome: str, db: Session = Depends(get_db)):
         "cliente": {
             "cpf": cliente.cpf,
             "nome": cliente.nome,
+            "telefone": cliente.telefone,
             "data_cadastro": cliente.data_cadastro
         }
     }
 
-
 @router.get(
     "/",
     summary="Listar todos os clientes",
-    description="""
+    dependencies=[Depends(require_role(["caixa", "gerente", "admin"]))]
+)
+def listar_clientes(db: Session = Depends(get_db)):
+    """
     Lista todos os clientes cadastrados no sistema com informações básicas.
     
     **Retorna:**
@@ -77,9 +91,6 @@ def criar_cliente(cpf: str, nome: str, db: Session = Depends(get_db)):
     
     **Uso:** Visão geral dos clientes cadastrados
     """
-)
-def listar_clientes(db: Session = Depends(get_db)):
-    """Lista todos os clientes cadastrados"""
     
     clientes = db.query(models.Cliente).all()
     
@@ -94,6 +105,7 @@ def listar_clientes(db: Session = Depends(get_db)):
         clientes_data.append({
             "cpf": cliente.cpf,
             "nome": cliente.nome,
+            "telefone": cliente.telefone,
             "data_cadastro": cliente.data_cadastro,
             "sacolas_ativas": sacolas_ativas,
             "status_beneficios": cliente.status_beneficios.value
@@ -108,7 +120,10 @@ def listar_clientes(db: Session = Depends(get_db)):
 @router.get(
     "/buscar",
     summary="Buscar cliente por nome",
-    description="""
+    dependencies=[Depends(require_role(["caixa", "gerente", "admin"]))]
+)
+def buscar_cliente_por_nome(nome: str, db: Session = Depends(get_db)):
+    """
     Busca clientes pelo nome (busca parcial, case-insensitive).
     
     **Funcionalidade:**
@@ -131,19 +146,15 @@ def listar_clientes(db: Session = Depends(get_db)):
     - nome: Termo de busca (mínimo 3 caracteres)
     
     **Exemplos:**
-```
+
     GET /api/clientes/buscar?nome=joão
     GET /api/clientes/buscar?nome=silva
     GET /api/clientes/buscar?nome=maria
-```
     
     **Observação:** 
     - Retorna lista vazia se nenhum cliente corresponder
     - Limite de 20 resultados para performance
     """
-)
-def buscar_cliente_por_nome(nome: str, db: Session = Depends(get_db)):
-    """Busca clientes por nome (parcial)"""
     
     # Validar termo de busca
     if len(nome.strip()) < 3:
@@ -184,7 +195,10 @@ def buscar_cliente_por_nome(nome: str, db: Session = Depends(get_db)):
 @router.get(
     "/{cpf}/sacolas",
     summary="Listar sacolas do cliente",
-    description="""
+    dependencies=[Depends(require_role(["caixa", "gerente", "admin"]))]
+)
+def listar_sacolas_cliente(cpf: str, db: Session = Depends(get_db)):
+    """
     Lista todas as sacolas ativas vinculadas a um cliente específico.
     
     **Retorna:**
@@ -195,9 +209,6 @@ def buscar_cliente_por_nome(nome: str, db: Session = Depends(get_db)):
     
     **Quando usar:** Ver quais sacolas o cliente possui atualmente
     """
-)
-def listar_sacolas_cliente(cpf: str, db: Session = Depends(get_db)):
-    """Lista todas as sacolas ativas de um cliente"""
     
     cliente = db.query(models.Cliente).filter(models.Cliente.cpf == cpf).first()
     if not cliente:
@@ -236,7 +247,10 @@ def listar_sacolas_cliente(cpf: str, db: Session = Depends(get_db)):
 @router.get(
     "/{cpf}/estatisticas",
     summary="Estatísticas do cliente",
-    description="""
+    dependencies=[Depends(require_role(["caixa", "gerente", "admin"]))]
+)
+def estatisticas_cliente(cpf: str, db: Session = Depends(get_db)):
+    """
     Retorna estatísticas consolidadas de compras do cliente.
     
     **Informações retornadas:**
@@ -249,9 +263,6 @@ def listar_sacolas_cliente(cpf: str, db: Session = Depends(get_db)):
     
     **Nota:** Considera apenas sacolas ativas do cliente
     """
-)
-def estatisticas_cliente(cpf: str, db: Session = Depends(get_db)):
-    """Retorna estatísticas de compras do cliente"""
     
     cliente = db.query(models.Cliente).filter(models.Cliente.cpf == cpf).first()
     if not cliente:
@@ -291,37 +302,40 @@ def estatisticas_cliente(cpf: str, db: Session = Depends(get_db)):
 @router.get(
     "/{cpf}/historico-completo",
     summary="Histórico completo do cliente",
-    description="""
+    dependencies=[Depends(require_role(["caixa", "gerente", "admin"]))]
+)
+def historico_completo_cliente(cpf: str, db: Session = Depends(get_db)):
+    """
     Retorna timeline completa de TUDO que o cliente fez no sistema.
     
     **Informações consolidadas:**
     
-    ** Dados do Cliente:**
+    **Dados do Cliente:**
     - CPF, nome, data de cadastro
     - Status atual dos benefícios
     
-    ** Resumo de Compras:**
+    **Resumo de Compras:**
     - Total gasto em todas as compras
     - Valor médio por compra
     - Total de usos realizados
     - Primeira e última compra
     
-    ** Sacolas:**
+    **Sacolas:**
     - Sacolas ativas (em uso)
     - Sacolas devolvidas (histórico)
     - Total de sacolas já vinculadas
     
-    ** Alertas:**
+    **Alertas:**
     - Alertas detectados automaticamente
     - Status de resolução
     - Observações dos alertas resolvidos
     
-    ** Suspensões:**
+    **Suspensões:**
     - Histórico de suspensões (se houver)
     - Motivos de suspensão
     - Datas de suspensão/reativação
     
-    ** Timeline:**
+    **Timeline:**
     - Eventos ordenados por data (mais recente primeiro)
     - Tipos: cadastro, vinculação, uso, devolução, alerta, suspensão
     
@@ -336,9 +350,6 @@ def estatisticas_cliente(cpf: str, db: Session = Depends(get_db)):
     
     **Observação:** Timeline pode ser extensa para clientes antigos
     """
-)
-def historico_completo_cliente(cpf: str, db: Session = Depends(get_db)):
-    """Retorna histórico completo e timeline do cliente"""
     
     # Buscar cliente
     cliente = db.query(models.Cliente).filter(models.Cliente.cpf == cpf).first()
@@ -483,7 +494,10 @@ def historico_completo_cliente(cpf: str, db: Session = Depends(get_db)):
 @router.get(
     "/{cpf}/validar",
     summary="Validar se cliente existe",
-    description="""
+    dependencies=[Depends(require_role(["caixa", "gerente", "admin"]))]
+)
+def validar_cliente(cpf: str, db: Session = Depends(get_db)):
+    """
     Verifica se um cliente existe no sistema sem criar cadastro.
     
     **Funcionalidade:**
@@ -508,9 +522,8 @@ def historico_completo_cliente(cpf: str, db: Session = Depends(get_db)):
     - cpf: CPF do cliente (11 dígitos)
     
     **Exemplos:**
-```
+
     GET /api/clientes/12345678900/validar
-```
     
     **Diferença de outros endpoints:**
     - GET /api/clientes/{cpf}/sacolas → Retorna sacolas (erro se não existe)
@@ -519,9 +532,6 @@ def historico_completo_cliente(cpf: str, db: Session = Depends(get_db)):
     **Observação:** 
     - Não cria cliente se não existir
     """
-)
-def validar_cliente(cpf: str, db: Session = Depends(get_db)):
-    """Valida se cliente existe sem criar cadastro"""
     
     cliente = db.query(models.Cliente).filter(models.Cliente.cpf == cpf).first()
     
@@ -542,17 +552,158 @@ def validar_cliente(cpf: str, db: Session = Depends(get_db)):
         "cliente": {
             "cpf": cliente.cpf,
             "nome": cliente.nome,
+            "telefone": cliente.telefone,
+            "data_cadastro": cliente.data_cadastro,
             "status_beneficios": cliente.status_beneficios.value,
             "sacolas_ativas": sacolas_ativas,
             "suspenso": cliente.status_beneficios != models.StatusBeneficios.ativo,
             "motivo_suspensao": cliente.motivo_suspensao if cliente.status_beneficios != models.StatusBeneficios.ativo else None
         }
     }
+   
+@router.post(
+    "/validar-cpf", 
+    summary="Validar CPF",
+    dependencies=[Depends(require_role(["caixa", "gerente", "admin"]))]
+)
+def validar_cpf_endpoint(cpf: str):
+    """
+    Valida se um CPF é válido (formato e dígitos verificadores).
+    
+    - **cpf**: CPF com 11 dígitos (apenas números)
+    
+    **Retorna:**
+    - valido: true/false
+    - mensagem: Descrição do resultado
+    
+    **Quando usar:**
+    - Antes de cadastrar cliente (validar CPF digitado)
+    - Validação em formulários
+    - Verificação de dados
+    
+    **Exemplos de CPF válido:**
+    - 12345678909
+    - 11144477735
+    
+    **Exemplos de CPF inválido:**
+    - 11111111111 (todos dígitos iguais)
+    - 12345678900 (dígitos verificadores incorretos)
+    """
+    from validate_docbr import CPF
+    
+    # Validar comprimento
+    if len(cpf) != 11:
+        return {
+            "cpf": cpf,
+            "valido": False,
+            "mensagem": "CPF deve ter exatamente 11 dígitos"
+        }
+    
+    # Validar se são apenas números
+    if not cpf.isdigit():
+        return {
+            "cpf": cpf,
+            "valido": False,
+            "mensagem": "CPF deve conter apenas números"
+        }
+    
+    validador = CPF()
+    
+    # Validar dígitos verificadores
+    cpf_valido = validador.validate(cpf)
+    
+    if cpf_valido:
+        return {
+            "cpf": cpf,
+            "valido": True,
+            "mensagem": "CPF válido"
+        }
+    else:
+        return {
+            "cpf": cpf,
+            "valido": False,
+            "mensagem": "CPF inválido (dígitos verificadores incorretos)"
+        }
+
+@router.put(
+    "/{cpf}",
+    summary="Editar dados do cliente",
+    dependencies=[Depends(require_role(["caixa", "gerente", "admin"]))]
+)
+def editar_cliente(cpf: str, nome: str = None, telefone: str = None, db: Session = Depends(get_db)):
+    """
+    Atualiza nome e/ou telefone de um cliente existente.
+
+    **Quando usar:**
+    - Corrigir nome digitado incorretamente no cadastro
+    - Adicionar ou atualizar telefone do cliente
+    - Atualizar dados após solicitação do cliente
+
+    **Campos editáveis:**
+    - nome: Nome completo (mínimo 3 caracteres)
+    - telefone: Telefone com 10 ou 11 dígitos (opcional)
+
+    **Validações aplicadas:**
+    - Cliente deve existir no sistema
+    - Nome deve ter no mínimo 3 caracteres (se informado)
+    - Telefone: 10 dígitos (fixo) ou 11 dígitos (celular) (se informado)
+
+    **Observação:** Passe apenas os campos que deseja atualizar.
+    Campos não informados permanecem inalterados.
+
+    **Parâmetros:**
+    - cpf: CPF do cliente (11 dígitos)
+    - nome: Novo nome completo (opcional)
+    - telefone: Novo telefone (opcional, envie vazio para remover)
+
+    **Exemplos:**
+
+    PUT /api/clientes/12345678900?nome=João Silva
+    PUT /api/clientes/12345678900?telefone=51999998888
+    PUT /api/clientes/12345678900?nome=João Silva&telefone=51999998888
+
+    **Erros possíveis:**
+    - 404: Cliente não encontrado
+    - 400: Nome inválido ou telefone com formato incorreto
+    """
+
+    cliente = db.query(models.Cliente).filter(models.Cliente.cpf == cpf).first()
+    if not cliente:
+        raise HTTPException(status_code=404, detail="Cliente não encontrado")
+
+    if nome is not None:
+        cliente.nome = validar_nome(nome)
+
+    if telefone is not None:
+        telefone_limpo = ''.join(filter(str.isdigit, telefone))
+        if telefone_limpo and len(telefone_limpo) not in (10, 11):
+            raise HTTPException(
+                status_code=400,
+                detail="Telefone inválido. Use 10 dígitos (fixo) ou 11 dígitos (celular)"
+            )
+        cliente.telefone = telefone_limpo or None
+
+    db.commit()
+    db.refresh(cliente)
+
+    return {
+        "sucesso": True,
+        "mensagem": f"{cliente.nome} foi atualizado(a) com sucesso",
+        "cliente": {
+            "cpf": cliente.cpf,
+            "nome": cliente.nome,
+            "telefone": cliente.telefone,
+            "data_cadastro": cliente.data_cadastro
+        }
+    }
 
 @router.delete(
     "/{cpf}",
     summary="Excluir cliente (restritivo)",
-    description="""
+    dependencies=[Depends(require_role(["admin"]))],
+)
+def excluir_cliente(cpf: str, db: Session = Depends(get_db)):
+    """
     Exclui um cliente do sistema com validações restritivas.
     
     **ATENÇÃO - Validações Aplicadas:**
@@ -566,10 +717,18 @@ def validar_cliente(cpf: str, db: Session = Depends(get_db)):
     **Quando usar:** Cadastro duplicado ou erro de digitação no cadastro inicial
     
     **Não usar para:** Clientes que já utilizaram o sistema (use suspensão)
+
+    **Parâmetro:**
+    - cpf: CPF do cliente (11 dígitos)
+    
+    **Retorna:**
+    - sucesso: true
+    - mensagem: Confirmação da exclusão
+    
+    **Erros possíveis:**
+    - 404: Cliente não encontrado
+    - 400: Cliente possui sacolas ativas/devolvidas ou alertas
     """
-)
-def excluir_cliente(cpf: str, db: Session = Depends(get_db)):
-    """Exclui cliente do sistema (apenas se nunca usou)"""
     
     # Buscar cliente
     cliente = db.query(models.Cliente).filter(models.Cliente.cpf == cpf).first()

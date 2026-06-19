@@ -8,12 +8,10 @@ Sistema de fidelização sustentável com EcoBags de juta rastreáveis, incentiv
 
 ## Status do Projeto
 
-**Backend:** 90% completo (52 endpoints operacionais)  
-**Arquitetura:** Enterprise Monorepo  
-**Versão:** v0.91-beta  
-**Última atualização:** Abril 2026  
-
- **Pronto para demonstração comercial**  
+**Backend:** 99% completo (71 endpoints operacionais)  
+**Arquitetura:** SaaS Multi-Tenant Enterprise Monorepo  
+**Versão:** v0.94-beta  
+**Última atualização:** Maio 2026  
 
 ---
 
@@ -23,36 +21,45 @@ O **Bag+** é um programa que visa substituir gradualmente as sacolas plásticas
 
 O sistema incorpora um programa de fidelização que recompensa clientes pelo uso recorrente das sacolas, criando incentivos financeiros para práticas sustentáveis.
 
+A plataforma é construída como **SaaS multi-tenant**, permitindo que múltiplos estabelecimentos (entidades) e suas filiais (unidades) operem de forma independente na mesma infraestrutura, cada um com suas próprias metas de desconto e rastreamento separado de progresso por cliente.
+
 ## Características Principais
 
 - **Material Sustentável**: EcoBags produzidas em juta biodegradável
 - **Sistema de Rastreamento**: Cada sacola vinculada ao CPF do cliente via QR Code SHA256
 - **Programa de Recompensas**: Descontos progressivos baseados no número de utilizações
+- **SaaS Multi-Tenant**: Múltiplos estabelecimentos e filiais em uma única plataforma
+- **Metas por Entidade**: Cada estabelecimento define suas próprias metas de desconto
 - **Ciclo de Vida Controlado**: 40 utilizações ou 90 dias de prazo máximo
 - **Descarte Responsável**: Compostagem industrial das sacolas devolvidas
 - **Detecção de Fraudes**: Sistema inteligente identifica 3 tipos de fraudes automaticamente
 - **Notificações Automáticas**: 5 tipos de alertas integrados ao sistema
+- **Sistema de Terminais**: Rastreamento completo por caixa com logs detalhados
+- **Geração de QR Codes**: API REST + Script CLI com sincronização automática
 
 ## Como Funciona
 
 ### 1. Primeira Utilização
 - Cliente adquire a **Bag+** no caixa
-- Sacola é vinculada ao CPF do cliente
+- Sacola é vinculada ao CPF do cliente via QR Code
 - QR Code único gerado com checksum SHA256
 - Contador de utilizações iniciado (máximo de 40 usos)
 - Prazo de 90 dias começa a contar
 
 ### 2. Uso Recorrente
 - Cliente apresenta o QR Code da sacola no caixa
+- Operador escaneia o QR Code completo para registrar uso
 - Sistema valida autenticidade e vinculação ao CPF
 - Cada sacola utilizada recebe +1 registro de uso
 - Sistema valida compra real (valor obrigatório)
 - Intervalo mínimo de 4h entre usos da mesma sacola
+- Log completo: quem, quando, onde (terminal), de onde (IP), qual entidade/unidade
 
 ### 3. Acúmulo de Benefícios
-- Ao atingir número "X" de utilizações (definido pelo estabelecimento)
+- Ao atingir número "X" de utilizações (definido por cada estabelecimento)
 - Descontos liberados automaticamente
 - Notificações enviadas ao cliente sobre marcos alcançados
+- Progresso rastreado separadamente por estabelecimento
 - Devolução antecipada = descontos maiores
 
 ### 4. Devolução
@@ -74,18 +81,23 @@ O sistema incorpora um programa de fidelização que recompensa clientes pelo us
 **Limites:**
 - Prazo máximo: **90 dias**
 - Utilizações máximas: **40 usos**
+- Estado calculado pelo critério mais restritivo entre usos e dias
 
 ## Regras e Controle
 
 ### Segurança do Sistema
--  Intervalo mínimo de 4 horas entre utilizações da mesma sacola
--  Validação obrigatória de compra real no sistema
--  Detecção automática de 3 tipos de fraude:
-  - **Tipo 1:** Múltiplas sacolas usadas simultaneamente
-  - **Tipo 2:** Uso excessivo em curto período
-  - **Tipo 3:** Padrão de uso suspeito
--  Alertas automáticos para comportamentos anormais
--  Sistema de auditoria completo (logs de todas ações)
+- ✅ Intervalo mínimo de 4 horas entre utilizações da mesma sacola
+- ✅ Validação obrigatória de compra real no sistema
+- ✅ Autenticação obrigatória para registrar vendas
+- ✅ Registro de uso via QR Code completo (anti-fraude)
+- ✅ Detecção automática de 3 tipos de fraude:
+  - **Tipo 1:** Múltiplas sacolas usadas simultaneamente com valores diferentes
+  - **Tipo 2:** Abuso de valor mínimo (8+ sacolas com R$ 15,00 no mesmo dia)
+  - **Tipo 3:** Padrão de valor repetido em dias diferentes
+- ✅ Alertas automáticos para comportamentos anormais
+- ✅ Sistema de auditoria completo (logs de todas ações)
+- ✅ Rastreamento por terminal (qual caixa registrou)
+- ✅ Rate limiting (5 tentativas de login/min, 1000 req/hora global)
 
 ### Integridade
 - Uso pessoal e intransferível (vinculado ao CPF)
@@ -93,6 +105,8 @@ O sistema incorpora um programa de fidelização que recompensa clientes pelo us
 - Compartilhamento ou manipulação resulta em suspensão temporária
 - Ultrapassar limites = perda do direito à devolução com desconto
 - Sistema de gestão de usuários com 3 níveis (Admin/Gerente/Caixa)
+- Tokens JWT com expiração diferenciada (12h caixa, 24h admin/gerente)
+- Isolamento de dados: Gerente/Caixa vê apenas dados da sua unidade
 
 ### Responsabilidade Ambiental
 - Descarte incorreto comprovado pode resultar em suspensão de benefícios
@@ -103,78 +117,133 @@ O sistema incorpora um programa de fidelização que recompensa clientes pelo us
 ## Funcionalidades Implementadas
 
 ### Para Operadores de Caixa
--  Cadastro rápido de clientes
--  Ativação de sacolas via QR Code
--  Registro de uso com validação automática
--  Processamento de devoluções
--  Busca por CPF ou código de sacola
+- ✅ Cadastro rápido de clientes
+- ✅ Ativação de sacolas via QR Code completo
+- ✅ Registro de uso via QR Code completo (pistolinha)
+- ✅ Processamento de devoluções
+- ✅ Busca por CPF ou código de sacola
+- ✅ Login com identificação de terminal
+- ✅ Autenticação obrigatória para vendas
 
 ### Para Gestores
--  Dashboard administrativo completo
--  Relatórios de vendas por período
--  Análise Month-over-Month (MoM)
--  Estatísticas gerais do sistema
--  Exportação de dados (CSV UTF-8)
--  Gestão de lotes de QR Codes
--  Sistema de alertas e notificações
--  Identificação de sacolas em risco
+- ✅ Dashboard administrativo completo (filtrado por unidade)
+- ✅ Relatórios de vendas por período
+- ✅ Relatório de vendas por terminal
+- ✅ Relatório de vendas por unidade
+- ✅ Análise Month-over-Month (MoM)
+- ✅ Estatísticas gerais do sistema
+- ✅ Exportação de dados (CSV UTF-8)
+- ✅ Gestão de lotes de QR Codes
+- ✅ Sistema de alertas e notificações
+- ✅ Identificação de sacolas em risco
+- ✅ Download de QR Codes gerados
+- ✅ Histórico de geração de lotes
 
 ### Para Administradores
--  Gestão completa de usuários (criar, editar, desativar)
--  Sistema de roles (Admin/Gerente/Caixa)
--  Logs de auditoria completos
--  Transferência de sacolas entre clientes
--  Reset de contador de utilizações
--  Suspensão/reativação de clientes
--  Broadcast de notificações
--  Relatórios de impacto ambiental
+- ✅ Gestão completa de usuários (criar, editar, desativar)
+- ✅ Sistema de roles (Admin/Gerente/Caixa)
+- ✅ Logs de auditoria completos com terminal, IP, entidade e unidade
+- ✅ Transferência de sacolas entre clientes
+- ✅ Reset de contador de utilizações
+- ✅ Suspensão/reativação de clientes
+- ✅ Broadcast de notificações
+- ✅ Relatórios de impacto ambiental
+- ✅ Geração de QR Codes via API
+- ✅ Controle de sequência automático
+- ✅ Gestão de entidades (estabelecimentos) — SaaS
+- ✅ Gestão de unidades (filiais) — SaaS
+- ✅ Visão consolidada de todas entidades e unidades
+- ✅ Relatório de vendas totais por entidade
 
 ### Segurança
--  Autenticação JWT (24h de validade)
--  31 endpoints protegidos por role
--  Middleware de autenticação
--  Auditoria de todas ações sensíveis
--  Validação de CPF com dígito verificador (planejado)
--  Rate limiting (planejado)
+- ✅ Autenticação JWT com entidade_id e unidade_id no token
+- ✅ 35+ endpoints protegidos por role
+- ✅ Middleware de autenticação
+- ✅ Auditoria de todas ações sensíveis
+- ✅ Sistema de terminais para rastreabilidade
+- ✅ Validação de CPF com dígito verificador
+- ✅ Rate limiting (slowapi) — login e global
+- ✅ Headers de segurança (CSP, X-Frame-Options, etc.)
+- ✅ Logs de segurança com rotação diária
+
+### Geração de QR Codes
+- ✅ API REST completa (4 endpoints)
+- ✅ Script CLI interativo
+- ✅ Sincronização automática de sequência
+- ✅ Geração em lote (até 10.000 por vez)
+- ✅ Formatos: CSV (importação) + PDF (gráfica)
+- ✅ Download direto via API
+- ✅ Histórico de lotes gerados
+- ✅ Importação via lote_codigo (sem risco de lotes parciais)
+- ✅ Auditoria completa (quem, quando, quantos)
+- ✅ Controle de acesso (apenas admins)
 
 ## Arquitetura Técnica
 
 ### Stack
 - **Backend:** FastAPI (Python 3.11+)
 - **Banco de Dados:** SQLite (migração para PostgreSQL planejada)
-- **Autenticação:** JWT + bcrypt
+- **Autenticação:** JWT multi-tenant + bcrypt
 - **API Docs:** Swagger UI com tema dark customizado
-- **Estrutura:** Monorepo enterprise-grade
+- **Estrutura:** SaaS Multi-Tenant Monorepo enterprise-grade
+- **QR Codes:** qrcode + ReportLab + SHA256
+- **Migrations:** Sistema próprio com SQL versionado e controle de versão
+
+### Modelo Multi-Tenant
+```
+Admin Global
+└── Entidade (ex: Zaffari)
+    ├── Unidade (ex: Iguatemi)
+    │   ├── Gerente
+    │   └── Caixas (Terminal 1, Terminal 2...)
+    └── Unidade (ex: Cavalhada)
+        ├── Gerente
+        └── Caixas
+└── Entidade (ex: Mercadinho João)
+    └── Unidade (ex: Matriz)
+        └── Caixas
+```
 
 ### Estrutura do Projeto
 ```
 bagplus-loyalty-system/
-├── apps/                    # 4 Frontends (planejados)
+├── apps/                    # 3 Frontends (em desenvolvimento)
 │   ├── caixa/              # Interface operador
-│   ├── gestor/             # Dashboard gerencial
-│   ├── admin/              # Painel administrativo
-│   └── cliente/            # App cliente (mobile + web)
-├── services/backend/       # API FastAPI (90% completo)
+│   ├── admin-gestor/       # Dashboard admin + gerente
+│   └── mobile/             # App cliente
+├── services/backend/       # API FastAPI
+│   ├── app/
+│   │   ├── routers/       # 16 módulos de endpoints
+│   │   │   └── admin/     # 12 módulos administrativos
+│   │   ├── core/          # Lógica central + QR Code generator
+│   │   ├── middleware/    # Autenticação + terminais
+│   │   └── db/            # SQLAlchemy models + migrations
 ├── storage/                # QR Codes e arquivos
-├── scripts/                # Geração de QR Codes
-└── infra/                  # Infraestrutura e docs
+└── scripts/                # Geração de QR Codes (CLI)
 ```
 
 ### Endpoints Disponíveis
-**Total:** 52 endpoints operacionais
+**Total:** 71 endpoints de API operacionais
 
-**Públicos (15):**
-- 4 endpoints de clientes
-- 4 endpoints de sacolas
+**Públicos (24):**
+- 9 endpoints de clientes
+- 8 endpoints de sacolas
 - 4 endpoints de notificações
 - 3 endpoints de autenticação
 
-**Admin (37):**
-- 6 endpoints de relatórios
+**Admin (47):**
+- 7 endpoints de relatórios (inclui vendas por unidade e por entidade)
 - 5 endpoints de gestão de usuários
-- 6 endpoints de alertas
-- 5 endpoints de lotes
-- 15+ endpoints administrativos diversos
+- 2 endpoints de alertas
+- 3 endpoints de lotes
+- 3 endpoints de suspensão
+- 4 endpoints de QR Codes
+- 5 endpoints de gestão de sacolas
+- 3 endpoints de exportação
+- 3 endpoints de notificações
+- 1 endpoint de auditoria
+- 6 endpoints de entidades ← SaaS
+- 5 endpoints de unidades ← SaaS
 
 ## Público-Alvo
 
@@ -206,14 +275,31 @@ bagplus-loyalty-system/
 - Relatórios mensais para marketing
 - Comparativo MoM de crescimento
 - Exportação de dados para campanhas
+- Análise por terminal (qual caixa vende mais)
+
+## Modelo de Negócio SaaS
+
+### Pricing (planejado)
+- **R$ 199/mês por entidade** — acesso completo à plataforma
+- Cada entidade pode ter quantas unidades precisar
+- Admin global gerencia todas as entidades
+
+### O que está incluso
+- Acesso à API completa
+- Dashboard e relatórios
+- Suporte técnico
+- Atualizações de segurança
+- Infraestrutura AWS
 
 ## Estratégia de Implementação
 
 ### 1. Fase Piloto (3-6 meses)
-- Backend completo (90% pronto)
+- Backend completo (99% pronto)
 - Interface de caixa
 - Dashboard administrativo
 - App do cliente
+- Sistema de terminais configurado
+- Geração de QR Codes via API
 
 ### 2. Fase de Transição
 - Sacolas plásticas ainda disponíveis
@@ -224,14 +310,14 @@ bagplus-loyalty-system/
 ### 3. Fase de Consolidação
 - Bag+ como opção principal
 - Redução gradual de plástico
-- Análise de resultados
+- Análise de resultados por caixa e unidade
 - Ajustes baseados em feedback
 
 ### 4. Fase Final
 - Bag+ como única opção
 - Sistema 100% sustentável
 - Expansão para outros estabelecimentos
-- Modelo replicável
+- Modelo replicável SaaS
 
 ## Benefícios
 
@@ -241,17 +327,18 @@ bagplus-loyalty-system/
 - Sacolas resistentes (40 usos garantidos)
 - Notificações sobre benefícios
 - App para acompanhamento (futuro)
-- Visualização de impacto ambiental pessoal
 
 ### Para o Estabelecimento
 - Imagem sustentável fortalecida
 - Redução de custos com sacolas plásticas
 - Fidelização comprovada por dados
 - Diferencial competitivo real
-- Relatórios gerenciais completos
+- Relatórios gerenciais completos por unidade
 - Dashboard administrativo profissional
 - Sistema de detecção de fraudes
 - ROI mensurável
+- Rastreamento por terminal
+- Metas de desconto personalizadas por estabelecimento
 
 ### Para o Meio Ambiente
 - Redução quantificada de plástico
@@ -265,13 +352,18 @@ bagplus-loyalty-system/
 Este software está disponível para licenciamento comercial.
 
 ### O que está incluído:
-- Backend completo (52 endpoints)
+- Backend completo (71 endpoints de API)
+- Arquitetura SaaS multi-tenant
 - Sistema de autenticação e segurança
+- Sistema de terminais
 - Dashboard administrativo
-- Relatórios gerenciais
+- Relatórios gerenciais por unidade e entidade
+- API de geração de QR Codes
+- Script CLI para QR Codes
 - Sistema de detecção de fraudes
 - Notificações automáticas
 - Exportação de dados
+- Logs de auditoria completos
 - Documentação técnica completa
 - Suporte técnico
 - Atualizações de segurança
@@ -283,11 +375,12 @@ Este software está disponível para licenciamento comercial.
 - Integração com ERPs existentes
 - Relatórios customizados
 - Hospedagem em nuvem
+- Impressão de QR Codes personalizada
 
 ### Contato para Licenciamento:
 
-📧 **Email:** jean06soares@gmail.com  
-🐙 **GitHub:** https://github.com/JeanAres/bagplus-loyalty-system
+**Email:** jean06soares@gmail.com  
+**GitHub:** https://github.com/JeanAres/bagplus-loyalty-system
 
 ---
 
@@ -295,9 +388,12 @@ Este software está disponível para licenciamento comercial.
 
 **Acesso ao Sistema:**
 - Swagger UI com tema dark profissional
-- 52 endpoints documentados
+- 71 endpoints documentados
 - Exemplos de requisições
 - Teste de autenticação e permissões
+- Geração de QR Codes via interface
+- Simulação de vendas por terminal
+- Gestão de entidades e unidades (SaaS)
 
 **Instruções:**
 Consulte o [README.md](./README.md) para instruções de instalação e teste local.
@@ -317,3 +413,9 @@ Consulte o [README.md](./README.md) para instruções de instalação e teste lo
 *Sua sacola vale mais.*
 
 Copyright © 2026 Jean Soares. Todos os direitos reservados.
+
+---
+
+**Versão:** v0.94-beta  
+**Endpoints:** 71 operacionais  
+**Última atualização:** Maio 2026
