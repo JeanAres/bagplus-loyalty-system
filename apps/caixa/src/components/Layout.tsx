@@ -22,6 +22,7 @@ import {
   ChevronUp,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import StatusBar from './caixa_StatusBar';
 
 interface NavItem {
   icon: React.ElementType;
@@ -342,7 +343,7 @@ export default function Layout({ children }: LayoutProps) {
               title={theme === 'light' ? 'Ativar tema escuro' : 'Ativar tema claro'}
             >
               {theme === 'light'
-                ? <Moon size={18} strokeWidth={2.5} className="text-slate-600 group-hover:text-slate-800 transition-colors" />
+                ? <Moon size={18} className="text-slate-400 group-hover:text-slate-600 transition-colors" />
                 : <Sun size={18} className="text-yellow-400 group-hover:text-yellow-300 transition-colors" />
               }
             </button>
@@ -353,6 +354,7 @@ export default function Layout({ children }: LayoutProps) {
         <main className="flex-1 overflow-auto p-6">
           {children}
         </main>
+        <StatusBar />
       </div>
 
       {/* Overlay */}

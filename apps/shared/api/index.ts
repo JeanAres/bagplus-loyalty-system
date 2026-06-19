@@ -16,7 +16,7 @@ export const USER_KEY = 'bagplus_user';
 // CONFIGURAÇÃO BASE
 // ============================================
 
-const getBaseUrl = (): string => {
+export const getBaseUrl = (): string => {
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
