@@ -227,7 +227,7 @@ export default function Layout({ children }: LayoutProps) {
         )}
       >
         {/* Logo + Toggle */}
-        <div className="flex items-center justify-between p-4 border-b border-border">
+        <div className="flex items-center justify-between px-4 h-14 border-b border-border flex-shrink-0">
           {sidebarOpen && (
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
@@ -309,7 +309,7 @@ export default function Layout({ children }: LayoutProps) {
       <div className="flex-1 flex flex-col overflow-hidden">
 
         {/* Header */}
-        <header className="bg-card border-b border-border px-6 py-3 flex items-center justify-between">
+        <header className="bg-card border-b border-border px-6 h-14 flex items-center justify-between flex-shrink-0">
           <nav className="flex items-center gap-1.5 text-sm text-muted-foreground">
             <button
               onClick={() => navigate('/')}
@@ -369,7 +369,7 @@ export default function Layout({ children }: LayoutProps) {
           manualOpen ? 'translate-x-0' : 'translate-x-full'
         )}
       >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border flex-shrink-0">
+        <div className="flex items-center justify-between px-5 h-14 border-b border-border flex-shrink-0">
           <div className="flex items-center gap-2">
             <BookOpen size={18} className="text-primary" />
             <span className="font-semibold text-foreground">Manual do Usuário</span>
