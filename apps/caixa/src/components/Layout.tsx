@@ -338,10 +338,13 @@ export default function Layout({ children }: LayoutProps) {
             </button>
             <button
               onClick={toggleTheme}
-              className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
+              className="p-2 rounded-lg hover:bg-secondary transition-colors group"
               title={theme === 'light' ? 'Ativar tema escuro' : 'Ativar tema claro'}
             >
-              {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
+              {theme === 'light'
+                ? <Moon size={18} strokeWidth={2.5} className="text-slate-600 group-hover:text-slate-800 transition-colors" />
+                : <Sun size={18} className="text-yellow-400 group-hover:text-yellow-300 transition-colors" />
+              }
             </button>
           </div>
         </header>
