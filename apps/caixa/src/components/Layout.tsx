@@ -330,10 +330,11 @@ export default function Layout({ children }: LayoutProps) {
           <div className="flex items-center gap-1">
             <button
               onClick={() => setManualOpen(true)}
-              className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
+              className="flex flex-row items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground text-sm"
               title="Manual do Usuário"
             >
-              <BookOpen size={18} />
+              <BookOpen size={16} />
+              <span>Manual do usuário</span>
             </button>
             <button
               onClick={toggleTheme}
@@ -351,62 +352,70 @@ export default function Layout({ children }: LayoutProps) {
         </main>
       </div>
 
+      {/* Overlay */}
+      <div
+        className={cn(
+          'fixed inset-0 bg-black/40 z-40 transition-opacity duration-300',
+          manualOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        )}
+        onClick={() => setManualOpen(false)}
+      />
+
       {/* Drawer Manual */}
-      {manualOpen && (
-        <>
-          <div
-            className="fixed inset-0 bg-black/40 z-40"
-            onClick={() => setManualOpen(false)}
-          />
-          <div className="fixed top-0 right-0 h-full w-80 bg-card border-l border-border z-50 flex flex-col shadow-xl">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-border flex-shrink-0">
-              <div className="flex items-center gap-2">
-                <BookOpen size={18} className="text-primary" />
-                <span className="font-semibold text-foreground">Manual do Usuário</span>
-              </div>
-              <button
-                onClick={() => setManualOpen(false)}
-                className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
-              >
-                <X size={16} />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto">
-              {manualSections.map((section) => {
-                const Icon = section.icon;
-                const isOpen = openSection === section.id;
-                return (
-                  <div key={section.id} className="border-b border-border">
-                    <button
-                      onClick={() => toggleSection(section.id)}
-                      className={cn(
-                        'w-full flex items-center justify-between px-5 py-3.5 text-left transition-colors',
-                        isOpen ? 'bg-secondary' : 'hover:bg-secondary/60'
-                      )}
-                    >
-                      <div className="flex items-center gap-3">
-                        <Icon size={16} className={cn(isOpen ? 'text-primary' : 'text-muted-foreground')} />
-                        <span className={cn('text-sm font-medium', isOpen ? 'text-foreground' : 'text-muted-foreground')}>
-                          {section.title}
-                        </span>
-                      </div>
-                      {isOpen
-                        ? <ChevronUp size={14} className="text-muted-foreground flex-shrink-0" />
-                        : <ChevronDown size={14} className="text-muted-foreground flex-shrink-0" />
-                      }
-                    </button>
-                    {isOpen && (
-                      <div className="px-5 py-4 bg-background">
-                        {section.content}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+      <div
+        className={cn(
+          'fixed top-0 right-0 h-full w-80 bg-card border-l border-border z-50 flex flex-col shadow-xl',
+          'transition-transform duration-300 ease-in-out',
+          manualOpen ? 'translate-x-0' : 'translate-x-full'
+        )}
+      >
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border flex-shrink-0">
+          <div className="flex items-center gap-2">
+            <BookOpen size={18} className="text-primary" />
+            <span className="font-semibold text-foreground">Manual do Usuário</span>
           </div>
-        </>
-      )}
+          <button
+            onClick={() => setManualOpen(false)}
+            className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
+          >
+            <X size={16} />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          {manualSections.map((section) => {
+            const Icon = section.icon;
+            const isOpen = openSection === section.id;
+            return (
+              <div key={section.id} className="border-b border-border">
+                <button
+                  onClick={() => toggleSection(section.id)}
+                  className={cn(
+                    'w-full flex items-center justify-between px-5 py-3.5 text-left transition-colors',
+                    isOpen ? 'bg-secondary' : 'hover:bg-secondary/60'
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <Icon size={16} className={cn(isOpen ? 'text-primary' : 'text-muted-foreground')} />
+                    <span className={cn('text-sm font-medium', isOpen ? 'text-foreground' : 'text-muted-foreground')}>
+                      {section.title}
+                    </span>
+                  </div>
+                  {isOpen
+                    ? <ChevronUp size={14} className="text-muted-foreground flex-shrink-0" />
+                    : <ChevronDown size={14} className="text-muted-foreground flex-shrink-0" />
+                  }
+                </button>
+                {isOpen && (
+                  <div className="px-5 py-4 bg-background">
+                    {section.content}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
     </div>
   );
 }
