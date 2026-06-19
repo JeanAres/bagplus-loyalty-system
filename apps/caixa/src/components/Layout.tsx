@@ -16,6 +16,10 @@ import {
   Sun,
   ChevronRight,
   Home,
+  BookOpen,
+  X,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -50,12 +54,146 @@ const navSections: NavSection[] = [
   },
 ];
 
+interface ManualSection {
+  id: string;
+  icon: React.ElementType;
+  title: string;
+  content: React.ReactNode;
+}
+
+const manualSections: ManualSection[] = [
+  {
+    id: 'home',
+    icon: Home,
+    title: 'Home',
+    content: (
+      <div className="text-sm text-muted-foreground space-y-3 leading-relaxed">
+        <div>
+          <p className="font-medium text-foreground mb-1">Leitura Rápida</p>
+          <p>Escaneie o QR Code — o sistema redireciona automaticamente:</p>
+          <ul className="mt-1.5 space-y-1 ml-3">
+            <li>🟦 Em estoque → <span className="font-medium text-foreground">Ativar Sacola</span></li>
+            <li>🟢 Ativa → <span className="font-medium text-foreground">Registrar Uso</span></li>
+            <li>⚫ Devolvida → Mensagem informativa</li>
+          </ul>
+        </div>
+        <div>
+          <p className="font-medium text-foreground mb-1">Resumo do Turno</p>
+          <p>Exibe contadores do dia (ativações, usos, devoluções) e suas últimas 5 operações.</p>
+        </div>
+      </div>
+    ),
+  },
+  {
+    id: 'clientes',
+    icon: UserPlus,
+    title: 'Clientes',
+    content: (
+      <div className="text-sm text-muted-foreground space-y-3 leading-relaxed">
+        <div>
+          <p className="font-medium text-foreground mb-1">Cadastrar</p>
+          <p>Preencha CPF, nome e telefone (opcional) e clique em <span className="font-medium text-foreground">Cadastrar</span>.</p>
+        </div>
+        <div>
+          <p className="font-medium text-foreground mb-1">Buscar</p>
+          <p>Busque por CPF ou nome. No resultado:</p>
+          <ul className="mt-1.5 space-y-1 ml-3">
+            <li><span className="font-medium text-foreground">Aba Dados</span> — telefone, data de cadastro e sacolas ativas. Clique no lápis para editar.</li>
+            <li><span className="font-medium text-foreground">Aba Histórico</span> — total gasto, valor médio e linha do tempo de eventos.</li>
+          </ul>
+        </div>
+      </div>
+    ),
+  },
+  {
+    id: 'ativar',
+    icon: QrCode,
+    title: 'Ativar Sacola',
+    content: (
+      <div className="text-sm text-muted-foreground space-y-1.5 leading-relaxed">
+        <p>Vincula uma sacola nova a um cliente.</p>
+        <ol className="list-decimal list-inside space-y-1 mt-2">
+          <li>Escaneie o QR Code da sacola</li>
+          <li>Informe o CPF do cliente</li>
+          <li>Clique em <span className="font-medium text-foreground">Ativar Sacola</span></li>
+        </ol>
+        <p className="text-xs mt-2">💡 Use a Leitura Rápida na Home para pular o passo 1.</p>
+      </div>
+    ),
+  },
+  {
+    id: 'uso',
+    icon: ShoppingBag,
+    title: 'Registrar Uso',
+    content: (
+      <div className="text-sm text-muted-foreground space-y-1.5 leading-relaxed">
+        <ol className="list-decimal list-inside space-y-1">
+          <li>Escaneie o QR Code da sacola</li>
+          <li>Verifique os dados (cliente, utilizações, estado)</li>
+          <li>Digite o valor da compra — ex: <code className="text-xs bg-secondary px-1 rounded">2599</code> vira <code className="text-xs bg-secondary px-1 rounded">25,99</code></li>
+          <li>Clique em <span className="font-medium text-foreground">Registrar Uso</span></li>
+        </ol>
+        <div className="mt-2 px-3 py-2 bg-secondary rounded-lg text-xs space-y-0.5">
+          <p>⚠️ Valor mínimo: <span className="font-medium text-foreground">R$ 15,00</span></p>
+          <p>⚠️ Intervalo mínimo entre usos: <span className="font-medium text-foreground">4 horas</span></p>
+        </div>
+      </div>
+    ),
+  },
+  {
+    id: 'devolucao',
+    icon: RotateCcw,
+    title: 'Devolver Sacola',
+    content: (
+      <div className="text-sm text-muted-foreground space-y-2 leading-relaxed">
+        <ol className="list-decimal list-inside space-y-1">
+          <li>Escaneie o QR Code da sacola</li>
+          <li>Confirme os dados e o desconto calculado</li>
+          <li>Clique em <span className="font-medium text-foreground">Confirmar Devolução</span></li>
+        </ol>
+        <p className="text-xs font-medium text-foreground mt-1">Descontos por estado:</p>
+        <div className="text-xs space-y-0.5 ml-1">
+          <p>🟢 Verde (≤15 usos / ≤60 dias) → <span className="font-medium text-foreground">R$ 40,00</span></p>
+          <p>🟡 Amarelo (≤25 usos / ≤80 dias) → <span className="font-medium text-foreground">R$ 20,00</span></p>
+          <p>🔴 Vermelho (≤40 usos / ≤90 dias) → <span className="font-medium text-foreground">R$ 10,00</span></p>
+          <p>⚫ Expirado → <span className="font-medium text-foreground">R$ 0,00</span></p>
+        </div>
+        <p className="text-xs mt-1">💡 Aplique o desconto no próximo cupom do cliente.</p>
+      </div>
+    ),
+  },
+  {
+    id: 'verificar',
+    icon: ScanLine,
+    title: 'Verificar QR Code',
+    content: (
+      <div className="text-sm text-muted-foreground leading-relaxed">
+        <p>Consulta o status de uma sacola <span className="font-medium text-foreground">sem ativar nem registrar nada</span>.</p>
+        <p className="mt-1">Escaneie ou digite o QR Code — o sistema exibe validade, ID e status atual.</p>
+      </div>
+    ),
+  },
+  {
+    id: 'historico',
+    icon: History,
+    title: 'Histórico de Usos',
+    content: (
+      <div className="text-sm text-muted-foreground leading-relaxed">
+        <p>Escaneie o QR Code ou digite o ID da sacola (ex: <code className="text-xs bg-secondary px-1 rounded">BAG-00001</code>).</p>
+        <p className="mt-1">Exibe total de usos, total gasto, valor médio e a lista cronológica de utilizações.</p>
+      </div>
+    ),
+  },
+];
+
 interface LayoutProps {
   children: React.ReactNode;
 }
 
 export default function Layout({ children }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [manualOpen, setManualOpen] = useState(false);
+  const [openSection, setOpenSection] = useState<string | null>(null);
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
@@ -73,6 +211,10 @@ export default function Layout({ children }: LayoutProps) {
   const currentPage = navSections
     .flatMap((s) => s.items)
     .find((i) => i.href === location.pathname);
+
+  const toggleSection = (id: string) => {
+    setOpenSection((prev) => (prev === id ? null : id));
+  };
 
   return (
     <div className="flex h-screen bg-background">
@@ -185,13 +327,22 @@ export default function Layout({ children }: LayoutProps) {
               </>
             )}
           </nav>
-          <button
-            onClick={toggleTheme}
-            className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
-            title={theme === 'light' ? 'Ativar tema escuro' : 'Ativar tema claro'}
-          >
-            {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setManualOpen(true)}
+              className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
+              title="Manual do Usuário"
+            >
+              <BookOpen size={18} />
+            </button>
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
+              title={theme === 'light' ? 'Ativar tema escuro' : 'Ativar tema claro'}
+            >
+              {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
+            </button>
+          </div>
         </header>
 
         {/* Content */}
@@ -199,6 +350,63 @@ export default function Layout({ children }: LayoutProps) {
           {children}
         </main>
       </div>
+
+      {/* Drawer Manual */}
+      {manualOpen && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/40 z-40"
+            onClick={() => setManualOpen(false)}
+          />
+          <div className="fixed top-0 right-0 h-full w-80 bg-card border-l border-border z-50 flex flex-col shadow-xl">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border flex-shrink-0">
+              <div className="flex items-center gap-2">
+                <BookOpen size={18} className="text-primary" />
+                <span className="font-semibold text-foreground">Manual do Usuário</span>
+              </div>
+              <button
+                onClick={() => setManualOpen(false)}
+                className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              {manualSections.map((section) => {
+                const Icon = section.icon;
+                const isOpen = openSection === section.id;
+                return (
+                  <div key={section.id} className="border-b border-border">
+                    <button
+                      onClick={() => toggleSection(section.id)}
+                      className={cn(
+                        'w-full flex items-center justify-between px-5 py-3.5 text-left transition-colors',
+                        isOpen ? 'bg-secondary' : 'hover:bg-secondary/60'
+                      )}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Icon size={16} className={cn(isOpen ? 'text-primary' : 'text-muted-foreground')} />
+                        <span className={cn('text-sm font-medium', isOpen ? 'text-foreground' : 'text-muted-foreground')}>
+                          {section.title}
+                        </span>
+                      </div>
+                      {isOpen
+                        ? <ChevronUp size={14} className="text-muted-foreground flex-shrink-0" />
+                        : <ChevronDown size={14} className="text-muted-foreground flex-shrink-0" />
+                      }
+                    </button>
+                    {isOpen && (
+                      <div className="px-5 py-4 bg-background">
+                        {section.content}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

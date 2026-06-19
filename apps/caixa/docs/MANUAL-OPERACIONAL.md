@@ -7,7 +7,7 @@ Guia de uso do sistema de caixa para operadores do programa Bag+.
 ## Login
 
 1. Acesse o sistema pelo navegador
-2. Informe seu **usuário**, **senha** e **terminal** (ex: Caixa 1)
+2. Informe seu **usuário** e **senha**
 3. Clique em **Entrar**
 
 > O sistema encerra a sessão automaticamente ao fechar ou recarregar a página (F5). Faça login novamente quando necessário.
