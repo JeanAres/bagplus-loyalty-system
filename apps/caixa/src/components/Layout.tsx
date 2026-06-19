@@ -22,7 +22,7 @@ import {
   ChevronUp,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
-import StatusBar from './caixa_StatusBar';
+import StatusBar from './StatusBar';
 
 interface NavItem {
   icon: React.ElementType;
