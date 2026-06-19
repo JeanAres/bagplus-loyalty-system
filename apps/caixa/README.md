@@ -21,7 +21,7 @@ Interface operacional para caixas do sistema Bag+.
 
 ## Funcionalidades
 - Login com validação de role (apenas caixa)
-- Tema dark automático após 18h com toggle manual
+- Tema dark automático após 18h com toggle manual com ícones coloridos (sol amarelo / lua escura)
 - Preferência de tema persiste via localStorage
 - Sessão via sessionStorage (logout automático no hard reload)
 - Sidebar recolhível com navegação por seções
@@ -29,6 +29,8 @@ Interface operacional para caixas do sistema Bag+.
 - Home: leitura rápida de QR Code com redirecionamento automático conforme status da sacola (estoque → ativar, ativo → registrar uso/devolver)
 - Home: resumo do turno com contadores de ativações, usos e devoluções + últimas ações
 - Busca de cliente: abas Dados e Histórico (timeline completa de eventos)
+- Drawer de manual do usuário com acordeão por seção (acessível pelo header)
+- Barra de status no rodapé com versão da API, versão do app e indicador online/offline
 
 ## Rodar localmente
 ```bash
